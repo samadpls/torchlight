@@ -17,75 +17,31 @@
 
 ---
 
-torchlight learns from [PyTorch forum](https://discuss.pytorch.org) threads, each paired with the answer that actually resolved it. This repo holds the whole pipeline: crawling the forum, building the dataset, training the model, and measuring it against a general LLM that answers by calling a forum-search tool.
+torchlight is a small PyTorch helper model that learns from [PyTorch forum](https://discuss.pytorch.org) threads. This repo covers the whole project, in three parts:
+
+| | Part | What it is | Status |
+|---|---|---|---|
+| 1 | **Dataset** | Forum questions paired with the answer that resolved them | Released (v0.1.0) |
+| 2 | **Model** | LoRA fine-tune of a small LLM on Apple Silicon with MLX | Planned |
+| 3 | **Comparison** | The fine-tuned model against a general LLM that answers by calling a forum-search tool | Next: evaluation harness and baselines |
 
 It's built in public, one piece at a time. ⭐ Star the repo to follow along.
 
-## Status
+## Dataset
 
-| Part | Status |
-|---|---|
-| Dataset: [`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) | Released (v0.1.0) |
-| Evaluation harness and baselines | Next |
-| LoRA fine-tune on Apple Silicon (MLX) | Planned |
-| Fine-tuned model vs. tool-calling LLM | Planned |
+[`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) holds 6,925 training chats and 260 evaluation questions, built from 22,484 forum threads. For each thread it keeps the post the forum marked as the solution, or the one the asker said fixed their problem, whoever wrote it.
 
-## The dataset
-
-[`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) on Hugging Face, CC BY 4.0:
-
-| Config | Split | Rows | Contents |
-|---|---|---|---|
-| `sft` | train | 6,925 | Chat examples: 6,426 answers and 499 clarifying questions |
-| `sft` | validation | 169 | Same format, threads from July to December 2024 |
-| `eval` | test | 260 | Questions from 2025 onward with reviewed reference answers |
-| `threads` | train | 22,484 | Every crawled thread, cleaned, with how it was resolved |
-
-```python
-from datasets import load_dataset
-
-sft = load_dataset("samadpls/torchlight-threads", "sft")
-evaluation = load_dataset("samadpls/torchlight-threads", "eval", split="test")
-```
-
-The threads come from those [ptrblck](https://discuss.pytorch.org/u/ptrblck), the forum's most active answerer, took part in, plus recent solved threads from everyone for evaluation. ptrblck is not treated as the source of truth. The answer is whichever post the forum marked as the solution, or the one the asker said fixed their problem.
-
-
-<p align="center"><img alt="The dataset on Hugging Face" src="assets/dataset-page.png" width="820"></p>
-
-## How it's built
-
-```mermaid
-flowchart LR
-    A[Crawl<br/>forum JSON API] --> B[Clean<br/>quotes, images, secrets]
-    B --> C[Resolve<br/>accepted post or<br/>asker confirmation]
-    C --> D{Needs review?}
-    D -- no --> F[Build examples<br/>date-based splits]
-    D -- yes --> E[Haiku agent<br/>keep, combine or drop]
-    E --> G[Grounding check<br/>code must match sources]
-    G --> F
-    F --> H[Hugging Face]
-```
-
-1. **Crawl** ([`src/torchlight/scrape/`](src/torchlight/scrape/)): fetch every thread through the forum's JSON API at 3 requests per second, caching each raw response in SQLite.
-2. **Resolve** ([`build/resolve.py`](src/torchlight/build/resolve.py)): the answer is the accepted post, or the post the asker confirmed fixed it. A thank-you post marked as accepted points back to the post it thanks.
-3. **Review** ([`prompts/review.md`](prompts/review.md)): answers that are only a question, very short, mostly a link, or that point at other posts go to an LLM agent. It keeps the post, drops the thread, or combines several posts into one answer. Every evaluation answer is reviewed too.
-4. **Check**: a combined answer is rejected unless every code block in it appears verbatim in its source posts.
-5. **Build** ([`build/pipeline.py`](src/torchlight/build/pipeline.py)): multi-turn answer examples and clarification examples, split by date so evaluation threads are newer than anything trained on.
+How it's crawled, reviewed and built: [`src/torchlight/scrape/`](src/torchlight/scrape/).
 
 ## 🚀 Reproduce it
 
 ```bash
 uv sync --all-extras
 uv run torchlight crawl      # about 2 hours at 3 requests/second
-uv run torchlight build      # writes data/processed and review batches
+uv run torchlight build      # builds the dataset from the crawl cache
 ```
 
-<details>
-<summary><b>How the review step runs</b></summary>
-
-`torchlight build` writes the threads that need review to `data/review/batches/`. An agent (Claude Code or Codex CLI) reviews each batch by following [`prompts/review.md`](prompts/review.md) and writes its result to `data/review/results/`. Run `torchlight build` again to apply the results. Results are kept by thread id, so a rebuild only sends new threads for review.
-</details>
+Commands for training and evaluation will be added as those parts land.
 
 <details>
 <summary><b>Repo layout</b></summary>
@@ -97,7 +53,7 @@ src/torchlight/
 ├── publish/     dataset card
 └── cli.py
 prompts/         instructions for the review agents
-assets/          logo and banners
+assets/          logo and banner
 tests/
 ```
 </details>
