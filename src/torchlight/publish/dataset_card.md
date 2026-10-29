@@ -46,16 +46,16 @@ The threads are the {user_threads:,} topics that [ptrblck](https://discuss.pytor
 
 The dataset was built to fine-tune and evaluate **torchlight**, a small PyTorch helper that gives a specific fix when it can and asks for a minimal repro when it can't.
 
-## ✨ At a glance
+## At a glance
 
 | | |
 |---|---|
-| 🧵 Threads crawled and cleaned | **{threads:,}** |
-| ✅ Usable rows (`sft` + `eval`) | **{usable:,}**, from {usable_threads:,} threads |
-| 💬 Answer examples | {answers:,} ({gold_answers:,} gold, {silver_answers:,} silver) |
-| 🙋 Clarification examples | {clarifications:,} |
-| 🧪 Evaluation questions | {eval:,}, all gold and all reviewed |
-| 🤖 Threads reviewed by an agent | {reviewed:,} ({review_keep:,} kept, {review_compose:,} combined, {review_drop:,} dropped) |
+| Threads crawled and cleaned | **{threads:,}** |
+| Usable rows (`sft` + `eval`) | **{usable:,}**, from {usable_threads:,} threads |
+| Answer examples | {answers:,} ({gold_answers:,} gold, {silver_answers:,} silver) |
+| Clarification examples | {clarifications:,} |
+| Evaluation questions | {eval:,}, all gold and all reviewed |
+| Threads reviewed by an agent | {reviewed:,} ({review_keep:,} kept, {review_compose:,} combined, {review_drop:,} dropped) |
 
 ## ⚡ Quick start
 
@@ -69,7 +69,7 @@ threads = load_dataset("samadpls/torchlight-threads", "threads", split="train")
 print(sft["train"][0]["messages"])
 ```
 
-## 🗂️ Configs
+## Configs
 
 | Config | Split | Rows | What it holds |
 |---|---|---|---|
@@ -80,16 +80,16 @@ print(sft["train"][0]["messages"])
 
 The splits are by date, never random, so every evaluation question is newer than anything in training.
 
-## 🧭 How answers were chosen
+## How answers were chosen
 
-1. **🏅 Accepted solution.** If a post is marked as the solution, it is the answer. When the asker marked their own thank-you post, the answer is the post they were thanking.
-2. **👍 Asker confirmation.** Otherwise, if the asker later said the fix worked ("that solved it", "works now"), the answer is the post they were replying to.
-3. **🤖 Review.** A Claude Haiku agent following [`prompts/review.md`](https://github.com/samadpls/torchlight/blob/main/prompts/review.md) reviewed every evaluation answer, plus training answers that were only a question, under 60 characters, mostly a link, or pointing at other posts. It kept the post, dropped the thread, or combined several posts into one answer.
-4. **🔒 Grounding check.** A combined answer is rejected unless every code block in it appears verbatim in its source posts.
+1. **Accepted solution.** If a post is marked as the solution, it is the answer. When the asker marked their own thank-you post, the answer is the post they were thanking.
+2. **Asker confirmation.** Otherwise, if the asker later said the fix worked ("that solved it", "works now"), the answer is the post they were replying to.
+3. **Review.** A Claude Haiku agent following [`prompts/review.md`](https://github.com/samadpls/torchlight/blob/main/prompts/review.md) reviewed every evaluation answer, plus training answers that were only a question, under 60 characters, mostly a link, or pointing at other posts. It kept the post, dropped the thread, or combined several posts into one answer.
+4. **Grounding check.** A combined answer is rejected unless every code block in it appears verbatim in its source posts.
 
 **Tiers:** `gold` answers are accepted solutions; `silver` answers were confirmed by the asker. The `eval` config is gold only.
 
-## 💡 What a row looks like
+## What a row looks like
 
 <details>
 <summary><b>An <code>sft</code> answer example</b></summary>
@@ -114,7 +114,7 @@ Each row also carries `kind`, `tier`, `answer_origin`, `answer_post_numbers`, `a
 - `clarification`: the opening question and a first reply that asked for missing details, such as a minimal executable snippet or the full error. These teach the model to ask instead of guessing.
 </details>
 
-### 🧩 System prompt
+### System prompt
 
 Rows contain only `user` and `assistant` turns, so you can train with any system prompt. torchlight trains with this one:
 
@@ -127,7 +127,7 @@ sft = sft.map(
 )
 ```
 
-## 🧹 Cleaning and filters
+## Cleaning and filters
 
 Every thread in all three configs is cleaned:
 
@@ -141,7 +141,7 @@ Every thread in all three configs is cleaned:
 
 {filters}
 
-## 📋 Fields
+## Fields
 
 <details>
 <summary><b>Show all fields</b></summary>
@@ -159,15 +159,15 @@ Every thread in all three configs is cleaned:
 - The data leans toward the questions ptrblck answered, so it is heavy on debugging, CUDA, training loops and shape errors.
 - Threads whose question or answer depends on an image were excluded.
 
-## 📜 License and attribution
+## License and attribution
 
 Forum content is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) by the [LF Projects Terms of Use](https://lfprojects.org/policies/terms-of-use/) that the PyTorch forums follow, and this dataset is released under the same license. Credit goes to the forum's authors; every row carries the URL of the thread it came from.
 
-## 🙌 Author
+## Author
 
 Built by **Abdul Samad** ([samadpls.com](https://samadpls.com) · [GitHub @samadpls](https://github.com/samadpls)) with [torchlight](https://github.com/samadpls/torchlight). Questions and corrections: abdulsamadsid1@gmail.com.
 
-## 📖 Citation
+## Citation
 
 ```bibtex
 @misc{{samad2026torchlight,

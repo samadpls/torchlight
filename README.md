@@ -21,16 +21,16 @@ torchlight learns from [PyTorch forum](https://discuss.pytorch.org) threads, eac
 
 It's built in public, one piece at a time. ⭐ Star the repo to follow along.
 
-## 🚦 Status
+## Status
 
-| | Part | Status |
-|---|---|---|
-| ✅ | Dataset: [`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) | Released (v0.1.0) |
-| 🔜 | Evaluation harness and baselines | Next |
-| 🗺️ | LoRA fine-tune on Apple Silicon (MLX) | Planned |
-| 🗺️ | Fine-tuned model vs. tool-calling LLM | Planned |
+| Part | Status |
+|---|---|
+| Dataset: [`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) | Released (v0.1.0) |
+| Evaluation harness and baselines | Next |
+| LoRA fine-tune on Apple Silicon (MLX) | Planned |
+| Fine-tuned model vs. tool-calling LLM | Planned |
 
-## 📦 The dataset
+## The dataset
 
 [`samadpls/torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) on Hugging Face, CC BY 4.0:
 
@@ -53,7 +53,7 @@ The threads come from those [ptrblck](https://discuss.pytorch.org/u/ptrblck), th
 
 <p align="center"><img alt="The dataset on Hugging Face" src="assets/dataset-page.png" width="820"></p>
 
-## 🛠️ How it's built
+## How it's built
 
 ```mermaid
 flowchart LR
@@ -67,11 +67,11 @@ flowchart LR
     F --> H[Hugging Face]
 ```
 
-1. **🕸️ Crawl** ([`src/torchlight/scrape/`](src/torchlight/scrape/)): fetch every thread through the forum's JSON API at 3 requests per second, caching each raw response in SQLite.
-2. **🧭 Resolve** ([`build/resolve.py`](src/torchlight/build/resolve.py)): the answer is the accepted post, or the post the asker confirmed fixed it. A thank-you post marked as accepted points back to the post it thanks.
-3. **🤖 Review** ([`prompts/review.md`](prompts/review.md)): answers that are only a question, very short, mostly a link, or that point at other posts go to an LLM agent. It keeps the post, drops the thread, or combines several posts into one answer. Every evaluation answer is reviewed too.
-4. **🔒 Check**: a combined answer is rejected unless every code block in it appears verbatim in its source posts.
-5. **📦 Build** ([`build/pipeline.py`](src/torchlight/build/pipeline.py)): multi-turn answer examples and clarification examples, split by date so evaluation threads are newer than anything trained on.
+1. **Crawl** ([`src/torchlight/scrape/`](src/torchlight/scrape/)): fetch every thread through the forum's JSON API at 3 requests per second, caching each raw response in SQLite.
+2. **Resolve** ([`build/resolve.py`](src/torchlight/build/resolve.py)): the answer is the accepted post, or the post the asker confirmed fixed it. A thank-you post marked as accepted points back to the post it thanks.
+3. **Review** ([`prompts/review.md`](prompts/review.md)): answers that are only a question, very short, mostly a link, or that point at other posts go to an LLM agent. It keeps the post, drops the thread, or combines several posts into one answer. Every evaluation answer is reviewed too.
+4. **Check**: a combined answer is rejected unless every code block in it appears verbatim in its source posts.
+5. **Build** ([`build/pipeline.py`](src/torchlight/build/pipeline.py)): multi-turn answer examples and clarification examples, split by date so evaluation threads are newer than anything trained on.
 
 ## 🚀 Reproduce it
 
@@ -102,12 +102,12 @@ tests/
 ```
 </details>
 
-## 🙌 Credits
+## Credits
 
 Built by **Abdul Samad** · [samadpls.com](https://samadpls.com) · [GitHub @samadpls](https://github.com/samadpls) · abdulsamadsid1@gmail.com
 
 The answers in the dataset were written by the PyTorch forum community, above all [ptrblck](https://discuss.pytorch.org/u/ptrblck). Every example links back to its source thread.
 
-## 📜 License
+## License
 
 The code is licensed under [Apache-2.0](LICENSE). The dataset is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), following the PyTorch forums' terms. The logo is inspired by PyTorch's flame but is not the PyTorch logo; PyTorch is a trademark of the Linux Foundation.
