@@ -95,10 +95,6 @@ The splits are by date, never random, so every evaluation question is newer than
 <summary><b>An <code>sft</code> answer example</b></summary>
 
 ```
-system     You are a careful PyTorch helper. Give specific, correct guidance with code
-           where it helps. If a question lacks the details needed to answer it, ask for
-           them, for example a minimal executable code snippet or the full error message,
-           instead of guessing.
 user       How does torchvision.transforms.Normalize work
            Whenever I Normalize my input images with its mean and std, and when i plot the
            images to visualize i get this message along with plots of images which are
@@ -117,6 +113,19 @@ Each row also carries `kind`, `tier`, `answer_origin`, `answer_post_numbers`, `a
 - `answer`: the conversation up to the answer, ending with the answer as the final assistant turn. Earlier assistant turns are context only.
 - `clarification`: the opening question and a first reply that asked for missing details, such as a minimal executable snippet or the full error. These teach the model to ask instead of guessing.
 </details>
+
+### 🧩 System prompt
+
+Rows contain only `user` and `assistant` turns, so you can train with any system prompt. torchlight trains with this one:
+
+> {system_prompt}
+
+```python
+SYSTEM_PROMPT = "You are a careful PyTorch helper. ..."
+sft = sft.map(
+    lambda row: {{"messages": [{{"role": "system", "content": SYSTEM_PROMPT}}] + row["messages"]}}
+)
+```
 
 ## 🧹 Cleaning and filters
 

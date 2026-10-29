@@ -86,8 +86,8 @@ def test_multi_turn_answer_keeps_context_and_ends_with_answer():
 
     messages = answer_messages(thread, 5, FIX, single_turn=False)
 
-    assert [m.role for m in messages] == ["system", "user", "assistant", "user", "assistant"]
-    assert messages[1].content.startswith("Loss is NaN")
+    assert [m.role for m in messages] == ["user", "assistant", "user", "assistant"]
+    assert messages[0].content.startswith("Loss is NaN")
     assert messages[-1].content == FIX
 
 
@@ -98,6 +98,7 @@ def test_clarification_example_uses_first_helper_question():
 
     messages = clarification_messages(thread, answer_post_number=4)
 
+    assert [m.role for m in messages] == ["user", "assistant"]
     assert messages[-1].content == CLARIFY
 
 

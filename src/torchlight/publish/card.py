@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from torchlight.build.examples import SYSTEM_PROMPT
+
 TEMPLATE = Path(__file__).with_name("dataset_card.md")
 
 FILTER_LABELS = {
@@ -37,6 +39,7 @@ def dataset_card(stats_path: Path, valid_since: str, eval_since: str) -> str:
     review = {v: stats.get(f"review: {v}", 0) for v in ("keep", "compose")}
     review_drop = stats.get("dropped in review", 0)
     return TEMPLATE.read_text().format(
+        system_prompt=SYSTEM_PROMPT,
         usable=usable,
         usable_badge=f"{usable:,}".replace(",", "%2C"),
         usable_threads=gold + silver + stats.get("examples: eval", 0),

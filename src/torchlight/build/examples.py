@@ -1,6 +1,7 @@
 from torchlight.build.resolve import is_acknowledgement, is_clarifying_question
 from torchlight.schemas import Message, Post, Thread
 
+# Not stored in the rows: the dataset card publishes it and training prepends it.
 SYSTEM_PROMPT = (
     "You are a careful PyTorch helper. Give specific, correct guidance with code where it helps. "
     "If a question lacks the details needed to answer it, ask for them, for example a minimal "
@@ -38,7 +39,7 @@ def _within_limits(messages: list[Message]) -> bool:
 def answer_messages(
     thread: Thread, answer_post_number: int, answer: str, single_turn: bool
 ) -> list[Message] | None:
-    """System prompt, the conversation up to the answer, then the answer as the final turn.
+    """The conversation up to the answer, then the answer as the final turn.
 
     Helper posts the asker never replied to right before the answer are left out, so the
     final assistant turn holds only the answer.
@@ -54,11 +55,7 @@ def answer_messages(
         ]
         while context and _role(thread, context[-1]) == "assistant":
             context.pop()
-    messages = [
-        Message(role="system", content=SYSTEM_PROMPT),
-        *_turns(thread, context),
-        Message(role="assistant", content=answer),
-    ]
+    messages = [*_turns(thread, context), Message(role="assistant", content=answer)]
     return messages if _within_limits(messages) else None
 
 
@@ -77,11 +74,7 @@ def clarification_messages(thread: Thread, answer_post_number: int) -> list[Mess
     ):
         return None
     opening = [p for p in thread.posts if p.post_number < reply.post_number]
-    return [
-        Message(role="system", content=SYSTEM_PROMPT),
-        *_turns(thread, opening),
-        Message(role="assistant", content=reply.content),
-    ]
+    return [*_turns(thread, opening), Message(role="assistant", content=reply.content)]
 
 
 def needs_clarification(thread: Thread, answer_post_number: int) -> bool:

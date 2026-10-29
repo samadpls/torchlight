@@ -36,8 +36,8 @@ It's built in public, one piece at a time. ⭐ Star the repo to follow along.
 
 | Config | Split | Rows | Contents |
 |---|---|---|---|
-| `sft` | train | 6,785 | Chat examples: 6,319 answers and 466 clarifying questions |
-| `sft` | validation | 168 | Same format, threads from July to December 2024 |
+| `sft` | train | 6,925 | Chat examples: 6,426 answers and 499 clarifying questions |
+| `sft` | validation | 169 | Same format, threads from July to December 2024 |
 | `eval` | test | 260 | Questions from 2025 onward with reviewed reference answers |
 | `threads` | train | 22,484 | Every crawled thread, cleaned, with how it was resolved |
 

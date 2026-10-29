@@ -46,8 +46,8 @@ The crawl on 2026-10-29 made 24,756 requests in 128 minutes. Every one returned 
 | Topics ptrblck posted in | 22,293 |
 | Recent solved topics from other answerers | 193 |
 | Topics in the dataset | 22,484 of the 22,486 fetched |
-| Training examples (`sft`, train) | 6,785 (6,319 answers, 466 clarifications) |
-| Validation examples (`sft`, validation) | 168 |
+| Training examples (`sft`, train) | 6,925 (6,426 answers, 499 clarifications) |
+| Validation examples (`sft`, validation) | 169 |
 | Evaluation items (`eval`, test) | 260, every answer reviewed |
 | Threads reviewed by an agent | 1,269 (408 kept, 449 combined, 412 dropped) |
 
