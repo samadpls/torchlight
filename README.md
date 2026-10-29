@@ -51,6 +51,8 @@ evaluation = load_dataset("samadpls/torchlight-threads", "eval", split="test")
 The threads come from those [ptrblck](https://discuss.pytorch.org/u/ptrblck), the forum's most active answerer, took part in, plus recent solved threads from everyone for evaluation. ptrblck is not treated as the source of truth. The answer is whichever post the forum marked as the solution, or the one the asker said fixed their problem.
 
 
+<p align="center"><img alt="The dataset on Hugging Face" src="assets/dataset-page.png" width="820"></p>
+
 ## 🛠️ How it's built
 
 ```mermaid

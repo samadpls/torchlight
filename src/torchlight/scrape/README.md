@@ -52,3 +52,5 @@ The crawl on 2026-10-29 made 24,756 requests in 128 minutes. Every one returned 
 | Threads reviewed by an agent | 1,269 (408 kept, 449 combined, 412 dropped) |
 
 Published as [samadpls/torchlight-threads](https://huggingface.co/datasets/samadpls/torchlight-threads).
+
+![The torchlight-threads dataset on Hugging Face](../../../assets/dataset-page.png)

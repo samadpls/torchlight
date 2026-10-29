@@ -36,12 +36,7 @@ configs:
   <img alt="torchlight" src="https://huggingface.co/datasets/samadpls/torchlight-threads/resolve/main/assets/hero.png" width="100%">
 </p>
 
-<p align="center">
-  <a href="https://github.com/samadpls/torchlight"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-samadpls%2Ftorchlight-181717?logo=github"></a>
-  <a href="https://samadpls.com"><img alt="samadpls.com" src="https://img.shields.io/badge/by-samadpls.com-EE4C2C"></a>
-  <img alt="License: CC BY 4.0" src="https://img.shields.io/badge/license-CC%20BY%204.0-EE4C2C">
-  <img alt="Language: English" src="https://img.shields.io/badge/language-English-555">
-</p>
+<p align="center"><a href="https://github.com/samadpls/torchlight"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-samadpls%2Ftorchlight-181717?logo=github"></a> <a href="https://samadpls.com"><img alt="samadpls.com" src="https://img.shields.io/badge/by-samadpls.com-EE4C2C"></a> <img alt="License: CC BY 4.0" src="https://img.shields.io/badge/license-CC%20BY%204.0-EE4C2C"> <img alt="Language: English" src="https://img.shields.io/badge/language-English-555"></p>
 
 # 🔥 torchlight threads
 
