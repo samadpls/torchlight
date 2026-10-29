@@ -1,0 +1,46 @@
+[project]
+name = "torchlight"
+version = "0.1.0"
+description = "Dataset, fine-tuning and evaluation pipeline for a small PyTorch helper model trained on resolved PyTorch forum threads"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "samadpls", email = "abdulsamadsid1@gmail.com" }
+]
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.2",
+    "pyyaml>=6.0.3",
+    "typer>=0.27.3",
+]
+
+[project.scripts]
+torchlight = "torchlight.cli:app"
+
+[project.optional-dependencies]
+train = [
+    "mlx-lm>=0.32.2 ; platform_machine == 'arm64' and sys_platform == 'darwin'",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.2,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+]
