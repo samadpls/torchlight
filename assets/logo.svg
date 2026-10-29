@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="torchlight">
+  <defs>
+    <radialGradient id="core" cx="100" cy="118" r="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF4D6"/>
+      <stop offset="0.35" stop-color="#FFC861"/>
+      <stop offset="1" stop-color="#FF8A3D" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="100" y1="180" x2="110" y2="14" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EE4C2C"/>
+      <stop offset="1" stop-color="#F26B3A"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#flame)" d="M147.5 78.1 A62 62 0 1 1 52.5 78.1 C66.6 61.2 84 34 110 14 C92 36 78 60 75.6 88.9 A38 38 0 1 0 129.1 93.6 A12 12 0 0 1 147.5 78.1 Z"/>
+  <circle cx="100" cy="118" r="34" fill="url(#core)"/>
+  <circle cx="100" cy="118" r="11" fill="#FFF8E7"/>
+  <path fill="#EE4C2C" d="M152 30 C153.6 41 155 42.4 166 44 C155 45.6 153.6 47 152 58 C150.4 47 149 45.6 138 44 C149 42.4 150.4 41 152 30 Z"/>
+</svg>

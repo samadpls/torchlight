@@ -8,7 +8,6 @@ REGULAR_POST = 1
 LIKE_ACTION = 2
 
 
-
 def _post(data: dict) -> Post | None:
     if (
         data.get("post_type") != REGULAR_POST
@@ -50,9 +49,7 @@ def load_thread(cache: ResponseCache, topic_id: int) -> Thread | None:
         if extra is None:
             return None
         raw_posts.extend(extra["post_stream"]["posts"])
-    posts = sorted(
-        (p for p in map(_post, raw_posts) if p is not None), key=lambda p: p.post_number
-    )
+    posts = sorted((p for p in map(_post, raw_posts) if p is not None), key=lambda p: p.post_number)
     if not posts or posts[0].post_number != 1:
         return None
     return Thread(
