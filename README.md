@@ -65,7 +65,7 @@ flowchart LR
     F --> H[Hugging Face]
 ```
 
-1. **🕸️ Crawl** ([`src/torchlight/scrape/`](src/torchlight/scrape/scrape.md)): fetch every thread through the forum's JSON API at 3 requests per second, caching each raw response in SQLite.
+1. **🕸️ Crawl** ([`src/torchlight/scrape/`](src/torchlight/scrape/)): fetch every thread through the forum's JSON API at 3 requests per second, caching each raw response in SQLite.
 2. **🧭 Resolve** ([`build/resolve.py`](src/torchlight/build/resolve.py)): the answer is the accepted post, or the post the asker confirmed fixed it. A thank-you post marked as accepted points back to the post it thanks.
 3. **🤖 Review** ([`prompts/review.md`](prompts/review.md)): answers that are only a question, very short, mostly a link, or that point at other posts go to an LLM agent. It keeps the post, drops the thread, or combines several posts into one answer. Every evaluation answer is reviewed too.
 4. **🔒 Check**: a combined answer is rejected unless every code block in it appears verbatim in its source posts.
