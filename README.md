@@ -42,14 +42,14 @@ The base model is [`microsoft/Phi-4-mini-instruct`](https://huggingface.co/micro
 
 | | |
 |---|---|
-| Method | LoRA with [mlx-lm](https://github.com/ml-explore/mlx-lm), on every linear layer of every block |
+| Method | LoRA with [mlx-lm](https://github.com/ml-explore/mlx-lm) on every linear layer of the top 16 of 32 blocks; the base weights stay 16-bit and frozen |
 | Rank / alpha | 16 / 32 (mlx-lm scale 2.0) |
 | Learning rate | 2e-4, cosine decay after 5% warmup |
 | Batch | 2, with 4 accumulation steps (8 per update) |
 | Epochs | 1 |
 | Max length | 4,096 tokens; the 7 longer training chats are dropped, not truncated |
 | Loss | final assistant message only |
-| Hardware | MacBook Pro, M3 Pro, 36 GB; peak memory 18 GB with gradient checkpointing |
+| Hardware | MacBook Pro, M3 Pro, 36 GB; about 6 seconds per batch and 15 GB of memory with gradient checkpointing |
 
 </details>
 
@@ -59,7 +59,7 @@ The base model is [`microsoft/Phi-4-mini-instruct`](https://huggingface.co/micro
 uv sync --all-extras
 uv run torchlight crawl      # about 2 hours at 3 requests/second
 uv run torchlight build      # builds the dataset from the crawl cache
-uv run torchlight train      # LoRA fine-tune with mlx-lm, about 9 hours on an M3 Pro
+uv run torchlight train      # LoRA fine-tune with mlx-lm, about 6 hours on an M3 Pro
 uv run torchlight fuse       # merges the adapter into the base model
 ```
 

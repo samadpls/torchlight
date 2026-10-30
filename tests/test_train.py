@@ -55,7 +55,7 @@ def test_export_prepends_system_prompt_and_drops_long_rows(tmp_path):
 def test_schedule_counts_optimizer_updates(tmp_path):
     run = LoRARun(epochs=2, batch_size=2, grad_accumulation=4, warmup=0.05)
 
-    config = run.mlx_config(tmp_path / "data", tmp_path / "adapters", train_rows=1000)
+    config = run.mlx_config("base", tmp_path / "data", tmp_path / "adapters", train_rows=1000)
 
     assert config["iters"] == 1000
     assert config["lr_schedule"] == {
@@ -67,7 +67,7 @@ def test_schedule_counts_optimizer_updates(tmp_path):
 
 
 def test_trial_iters_override_epochs(tmp_path):
-    config = LoRARun().mlx_config(tmp_path, tmp_path, train_rows=1000, iters=100)
+    config = LoRARun().mlx_config("base", tmp_path, tmp_path, train_rows=1000, iters=100)
 
     assert config["iters"] == 100
     assert config["lr_schedule"]["arguments"][1] == 25 - 1
