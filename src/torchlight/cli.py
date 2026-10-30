@@ -1,15 +1,21 @@
 import asyncio
 import json
+import subprocess
+import sys
 from datetime import datetime
 from typing import Annotated
 
 import typer
+import yaml
 from pydantic import SecretStr
 
 from torchlight import scrape
 from torchlight.build.pipeline import build as build_dataset
 from torchlight.publish.card import dataset_card
 from torchlight.settings import Settings
+from torchlight.train import LoRARun, export
+
+DEFAULT_RUN = LoRARun()
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -65,3 +71,77 @@ def build(
     for key, value in sorted(stats.items()):
         typer.echo(f"{key}: {value}")
     typer.echo(f"review batches written: {batch_count}")
+
+
+def _mlx_lm(*args: str) -> None:
+    result = subprocess.run([sys.executable, "-m", "mlx_lm", *args])
+    if result.returncode:
+        raise typer.Exit(result.returncode)
+
+
+@app.command()
+def train(
+    run: Annotated[str, typer.Option(help="Folder for this run under data/train.")] = "phi4-mini",
+    model: str = DEFAULT_RUN.model,
+    rank: int = DEFAULT_RUN.rank,
+    scale: Annotated[float, typer.Option(help="LoRA alpha divided by rank.")] = DEFAULT_RUN.scale,
+    learning_rate: float = DEFAULT_RUN.learning_rate,
+    epochs: float = DEFAULT_RUN.epochs,
+    batch_size: int = DEFAULT_RUN.batch_size,
+    grad_accumulation: int = DEFAULT_RUN.grad_accumulation,
+    warmup: Annotated[float, typer.Option(help="Share of updates spent warming up.")] = (
+        DEFAULT_RUN.warmup
+    ),
+    max_seq_length: int = DEFAULT_RUN.max_seq_length,
+    iters: Annotated[
+        int | None, typer.Option(help="Stop after this many batches, for trial runs.")
+    ] = None,
+) -> None:
+    """Fine-tune the base model with LoRA on the sft split, using mlx-lm."""
+    from transformers import AutoTokenizer
+
+    params = LoRARun(
+        model=model,
+        rank=rank,
+        scale=scale,
+        learning_rate=learning_rate,
+        epochs=epochs,
+        batch_size=batch_size,
+        grad_accumulation=grad_accumulation,
+        warmup=warmup,
+        max_seq_length=max_seq_length,
+    )
+    data_dir = Settings().data_dir
+    run_dir = data_dir / "train" / run
+    tokenizer = AutoTokenizer.from_pretrained(params.model)
+    stats = export(
+        data_dir / "processed" / "sft",
+        run_dir / "data",
+        lambda messages: len(tokenizer.apply_chat_template(messages, return_dict=False)),
+        params.max_seq_length,
+    )
+    for key, value in stats.items():
+        typer.echo(f"{key}: {value}")
+    config = params.mlx_config(run_dir / "data", run_dir / "adapters", stats["train: kept"], iters)
+    config_path = run_dir / "lora.yaml"
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False))
+    _log(f"training for {config['iters']} batches with {config_path}")
+    _mlx_lm("lora", "--config", str(config_path))
+
+
+@app.command()
+def fuse(
+    run: Annotated[str, typer.Option(help="Folder of the run under data/train.")] = "phi4-mini",
+) -> None:
+    """Merge a run's LoRA adapter into its base model and save a Hugging Face folder."""
+    run_dir = Settings().data_dir / "train" / run
+    config = yaml.safe_load((run_dir / "lora.yaml").read_text())
+    _mlx_lm(
+        "fuse",
+        "--model",
+        config["model"],
+        "--adapter-path",
+        config["adapter_path"],
+        "--save-path",
+        str(run_dir / "fused"),
+    )
