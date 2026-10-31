@@ -24,7 +24,7 @@ torchlight is a small model that helps with PyTorch questions. It learned from [
 |---|---|---|---|
 | 1 | [Dataset](#1-dataset) | 7,354 forum questions with the answers that solved them | [`torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) |
 | 2 | [Model](#2-model) | Phi-4-mini-instruct (3.8B), fine-tuned on a MacBook | [`torchlight-phi4-mini`](https://huggingface.co/samadpls/torchlight-phi4-mini), also as a [LoRA adapter](https://huggingface.co/samadpls/torchlight-phi4-mini-lora) and [GGUF](https://huggingface.co/samadpls/torchlight-phi4-mini-GGUF) |
-| 3 | [Evaluation](#3-evaluation) | The model compared with its base model, with forum search, and with Claude Sonnet 5.5 | [Results below](#3-evaluation) |
+| 3 | [Evaluation](#3-evaluation) | The model compared with its base model, with and without forum search | [Results below](#3-evaluation) |
 
 All releases are in the [torchlight collection](https://huggingface.co/collections/samadpls/torchlight-6ae54bfcd2f87e2ae7078554) on Hugging Face. ⭐ If you find it useful, star the repo.
 
@@ -88,7 +88,7 @@ More: [training settings, full loss table and how to run it](src/torchlight/trai
 
 ## 3. Evaluation
 
-Five setups answered the 260 test questions: Phi-4-mini and torchlight, each with and without forum search, and Claude Sonnet 5.5 with search as a reference. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread. It saw the answers shuffled and without names.
+Four setups answered the 260 test questions: Phi-4-mini and torchlight, each with and without forum search. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread. It saw the answers shuffled and without names.
 
 | Model | Score (1-5) | Scored 4 or 5 | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
 |---|---|---|---|---|---|---|
@@ -96,7 +96,6 @@ Five setups answered the 260 test questions: Phi-4-mini and torchlight, each wit
 | Phi-4-mini + forum search | 1.75 | 5% | 145 of 157 | 1 of 7 | 2% | 0.1 |
 | torchlight (fine-tuned) | 1.97 | 7% | 9 of 10 | 0 of 7 | 7% | 0.0 |
 | torchlight + forum search | 1.95 | 6% | 4 of 4 | 0 of 7 | 2% | 0.0 |
-| Claude Sonnet 5.5 + forum search (reference) | 4.66 | 93% | 119 of 119 | 0 of 7 | 7% | 0.1 |
 
 **What the results show**
 
@@ -106,7 +105,6 @@ Five setups answered the 260 test questions: Phi-4-mini and torchlight, each wit
 - **torchlight beats the base model with search,** 1.97 against 1.75 (95% interval +0.09 to +0.35).
 - **torchlight never uses the search tool.** It was trained on chats without tools, so adding search changes nothing.
 - **Its answers are much shorter.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32. It rarely writes code. 4 answers (1.5%) got stuck repeating a phrase.
-- **Claude Sonnet 5.5 with search scores 4.66.** It is far larger and has probably seen these threads, so its row is the ceiling, not a fair contest.
 
 More: [how the test works and how to rerun it](src/torchlight/eval/).
 
@@ -131,7 +129,7 @@ uv run torchlight batches judge
 uv run torchlight report
 ```
 
-The dataset review runs as small LLM agents. In the evaluation, Claude Sonnet 5.5 and the judge (Claude Opus 5.5) run as Claude Code agents. No API key is needed. Each folder's README explains its steps.
+The dataset review runs as small LLM agents, and the evaluation's judge (Claude Opus 5.5) as Claude Code agents. No API key is needed. Each folder's README explains its steps.
 
 <details>
 <summary><b>Repo layout</b></summary>

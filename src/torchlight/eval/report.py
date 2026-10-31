@@ -9,12 +9,12 @@ from torchlight.schemas import EvalExample
 ARM_NAMES = {
     "A": "Phi-4-mini (base model)",
     "B": "Phi-4-mini + forum search",
-    "C": "Claude Sonnet 5.5 + forum search (reference)",
     "D": "torchlight (fine-tuned)",
     "E": "torchlight + forum search",
 }
-# Same-size models first; the larger model is a ceiling, not a competitor.
-ARM_ORDER = ["A", "B", "D", "E", "C"]
+# Arm C, a larger model with the same search tool, is graded alongside as a reference for the
+# judge but left out of the table, which compares models of the same size.
+REPORTED_ARMS = ["A", "B", "D", "E"]
 
 
 def _share(values: list[bool]) -> str:
@@ -41,7 +41,7 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
         "Searches per question |",
         "|---|---|---|---|---|---|---|",
     ]
-    for arm in sorted(by_arm, key=lambda a: (ARM_ORDER + sorted(by_arm)).index(a)):
+    for arm in [a for a in REPORTED_ARMS if a in by_arm]:
         arm_answers = by_arm[arm]
         arm_grades = grades_by_arm[arm]
         with_code = [a for a in arm_answers if torch_names(a.answer)]
@@ -49,7 +49,7 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
             "| "
             + " | ".join(
                 [
-                    ARM_NAMES.get(arm, arm),
+                    ARM_NAMES[arm],
                     f"{mean(g.score for g in arm_grades):.2f}" if arm_grades else "n/a",
                     _share([g.score >= 4 for g in arm_grades]),
                     _count([not invalid_names(a.answer) for a in with_code]),
