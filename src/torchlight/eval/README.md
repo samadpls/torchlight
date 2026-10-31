@@ -4,7 +4,23 @@ This folder tests the fine-tuned model against models that were not fine-tuned b
 
 ## Results
 
-The evaluation is still running. Results will be added here when it finishes.
+| Model | Score (1-5) | Scored 4 or 5 | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
+|---|---|---|---|---|---|---|
+| Phi-4-mini (base model) | 1.88 | 5% | 170 of 175 | 0 of 7 | 0% | 0.0 |
+| Phi-4-mini + forum search | 1.75 | 5% | 145 of 157 | 1 of 7 | 2% | 0.1 |
+| torchlight (fine-tuned) | 1.97 | 7% | 9 of 10 | 0 of 7 | 7% | 0.0 |
+| torchlight + forum search | 1.95 | 6% | 4 of 4 | 0 of 7 | 2% | 0.0 |
+| Claude Sonnet 5.5 + forum search (reference) | 4.66 | 93% | 119 of 119 | 0 of 7 | 7% | 0.1 |
+
+**What the results show**
+
+- **A 3.8B model doesn't solve most of these questions.** The base model and torchlight, with or without search, all score between 1.75 and 1.97 out of 5. Fewer than 1 answer in 10 scores 4 or 5. The questions are from 2025 and 2026, often about new releases or specific hardware, and the model's knowledge ends in mid-2024.
+- **Fine-tuning helped a little, but not clearly.** torchlight scores 1.97 against 1.88 for the base model. It gives fewer answers that are flatly wrong (71 scored 1, against 102). But the gain is within the noise: the 95% interval is −0.05 to +0.22.
+- **Search made the base model worse.** It searched on 23 questions. On those, it scored 1.35 against 1.87 without search, because the threads it found often pulled it off topic.
+- **torchlight beats the base model with search,** 1.97 against 1.75 (95% interval +0.09 to +0.35).
+- **torchlight never uses the search tool.** It was trained on chats without tools, so adding search changes nothing.
+- **Its answers are much shorter.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32. It rarely writes code. 4 answers (1.5%) got stuck repeating a phrase.
+- **Claude Sonnet 5.5 with search scores 4.66.** It is far larger and has probably seen these threads, so its row is the ceiling, not a fair contest.
 
 ## The five setups
 
@@ -37,7 +53,7 @@ A script also checks the code in each answer: every `torch.*` name must exist in
 
 ```bash
 uv run torchlight index               # build the search index
-uv run torchlight answer --arm A      # also B, D and E; 10 to 30 minutes each on a MacBook Pro (M3 Pro)
+uv run torchlight answer --arm A      # also B, D and E; 10 to 35 minutes each on a MacBook Pro (M3 Pro)
 uv run torchlight batches questions   # questions for Claude Sonnet 5.5
 uv run torchlight batches judge       # scoring batches, once every setup has answered
 uv run torchlight report              # the results table

@@ -29,6 +29,8 @@ def make_example(thread_id: int = 7) -> EvalExample:
         '<|tool_call|>[{"name": "search_forum", "arguments": {"query": "amp nan"}}]<|/tool_call|>',
         'functools[{"name": "search_forum", "arguments": {"query": "amp nan"}}]',
         '[{"name": "search_forum", "arguments": "{\\"query\\": \\"amp nan\\"}"}]',
+        'Let me search the forum.\n\n[{"name": "search_forum", "arguments": {"query": "amp nan"}}]',
+        'I will look this up:\n```python\nsearch_forum("amp nan")\n```',
     ],
 )
 def test_tool_query_reads_phi_tool_calls(reply):
@@ -42,6 +44,9 @@ def test_tool_query_ignores_json_inside_an_answer():
 def test_clean_drops_special_tokens_and_tool_calls():
     assert clean('<|tool_call|>[{"name": "x"}]<|/tool_call|>Use a scaler.<|end|>') == (
         "Use a scaler."
+    )
+    assert clean('Searching now.\n[{"name": "search_forum", "arguments": {"query": "x"}}]') == (
+        "Searching now."
     )
 
 

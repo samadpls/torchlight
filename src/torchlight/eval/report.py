@@ -21,6 +21,11 @@ def _share(values: list[bool]) -> str:
     return f"{100 * sum(values) / len(values):.0f}%" if values else "n/a"
 
 
+def _count(values: list[bool]) -> str:
+    """'9 of 10' rather than a percentage, for groups too small for one to mean much."""
+    return f"{sum(values)} of {len(values)}"
+
+
 def results_table(examples: list[EvalExample], answers: list[Answer], grades: list[Grade]) -> str:
     needs_details = {e.thread_id: e.needs_clarification for e in examples}
     by_arm: dict[str, list[Answer]] = defaultdict(list)
@@ -31,9 +36,10 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
         grades_by_arm[grade.arm].append(grade)
 
     rows = [
-        "| Model | Answers | Score (1-5) | Scored 4+ | Valid torch APIs | "
-        "Asks when details are missing | Asks when answerable | Searches per question |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Model | Score (1-5) | Scored 4 or 5 | Code with only real torch APIs | "
+        "Asked for details, when they were missing | Asked for details, when not needed | "
+        "Searches per question |",
+        "|---|---|---|---|---|---|---|",
     ]
     for arm in sorted(by_arm, key=lambda a: (ARM_ORDER + sorted(by_arm)).index(a)):
         arm_answers = by_arm[arm]
@@ -44,11 +50,10 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
             + " | ".join(
                 [
                     ARM_NAMES.get(arm, arm),
-                    str(len(arm_answers)),
                     f"{mean(g.score for g in arm_grades):.2f}" if arm_grades else "n/a",
                     _share([g.score >= 4 for g in arm_grades]),
-                    _share([not invalid_names(a.answer) for a in with_code]),
-                    _share([g.asks for g in arm_grades if needs_details[g.thread_id]]),
+                    _count([not invalid_names(a.answer) for a in with_code]),
+                    _count([g.asks for g in arm_grades if needs_details[g.thread_id]]),
                     _share([g.asks for g in arm_grades if not needs_details[g.thread_id]]),
                     f"{mean(len(a.searches) for a in arm_answers):.1f}",
                 ]
