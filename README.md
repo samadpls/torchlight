@@ -22,7 +22,7 @@ torchlight is a small PyTorch helper model that learns from [PyTorch forum](http
 | | Part | What it is | Status |
 |---|---|---|---|
 | 1 | **Dataset** | Forum questions paired with the answer that resolved them | Released (v0.1.0) |
-| 2 | **Model** | LoRA fine-tune of a small LLM on Apple Silicon with MLX | Planned |
+| 2 | **Model** | LoRA fine-tune of a small LLM on Apple Silicon with MLX | Training: first run of Phi-4-mini-instruct |
 | 3 | **Comparison** | The fine-tuned model against a general LLM that answers by calling a forum-search tool | Next: evaluation harness and baselines |
 
 It's built in public, one piece at a time. ⭐ Star the repo to follow along.
@@ -33,15 +33,37 @@ It's built in public, one piece at a time. ⭐ Star the repo to follow along.
 
 How it's crawled, reviewed and built: [`src/torchlight/scrape/`](src/torchlight/scrape/).
 
+## Model
+
+The base model is [`microsoft/Phi-4-mini-instruct`](https://huggingface.co/microsoft/Phi-4-mini-instruct) (3.8B, MIT). Its training data ends in June 2024, so the evaluation threads, all from 2025 onward, are new to it. It also calls tools natively, which the comparison needs, and Unsloth supports it for training on NVIDIA GPUs.
+
+<details>
+<summary><b>Training setup</b></summary>
+
+| | |
+|---|---|
+| Method | LoRA with [mlx-lm](https://github.com/ml-explore/mlx-lm) on every linear layer of the top 16 of 32 blocks; the base weights stay 16-bit and frozen |
+| Rank / alpha | 16 / 32 (mlx-lm scale 2.0) |
+| Learning rate | 2e-4, cosine decay after 5% warmup |
+| Batch | 2, with 4 accumulation steps (8 per update) |
+| Epochs | 1 |
+| Max length | 4,096 tokens; the 7 longer training chats are dropped, not truncated |
+| Loss | final assistant message only |
+| Hardware | MacBook Pro, M3 Pro, 36 GB; about 6 seconds per batch and 15 GB of memory with gradient checkpointing |
+
+</details>
+
 ## 🚀 Reproduce it
 
 ```bash
 uv sync --all-extras
 uv run torchlight crawl      # about 2 hours at 3 requests/second
 uv run torchlight build      # builds the dataset from the crawl cache
+uv run torchlight train      # LoRA fine-tune with mlx-lm, about 6 hours on an M3 Pro
+uv run torchlight fuse       # merges the adapter into the base model
 ```
 
-Commands for training and evaluation will be added as those parts land.
+Commands for evaluation will be added when that part lands.
 
 <details>
 <summary><b>Repo layout</b></summary>
@@ -50,6 +72,7 @@ Commands for training and evaluation will be added as those parts land.
 src/torchlight/
 ├── scrape/      forum client, response cache, endpoints, crawl
 ├── build/       parsing, cleaning, answer selection, review, examples
+├── train/       mlx-lm data export and LoRA config
 ├── publish/     dataset card
 └── cli.py
 prompts/         instructions for the review agents

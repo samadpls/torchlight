@@ -1,15 +1,22 @@
 import asyncio
 import json
+import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 
 import typer
+import yaml
 from pydantic import SecretStr
 
 from torchlight import scrape
 from torchlight.build.pipeline import build as build_dataset
 from torchlight.publish.card import dataset_card
 from torchlight.settings import Settings
+from torchlight.train import LoRARun, export
+
+DEFAULT_RUN = LoRARun()
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -65,3 +72,115 @@ def build(
     for key, value in sorted(stats.items()):
         typer.echo(f"{key}: {value}")
     typer.echo(f"review batches written: {batch_count}")
+
+
+def _mlx_lm(*args: str) -> None:
+    result = subprocess.run([sys.executable, "-m", "mlx_lm", *args])
+    if result.returncode:
+        raise typer.Exit(result.returncode)
+
+
+def _training_weights(params: LoRARun, models_dir: Path) -> str:
+    if params.bits is None:
+        return params.model
+    path = models_dir / f"{params.model.split('/')[-1]}-{params.bits}bit"
+    if not path.exists():
+        _log(f"quantizing {params.model} to {params.bits} bits")
+        _mlx_lm(
+            "convert",
+            "--model",
+            params.model,
+            "-q",
+            "--q-bits",
+            str(params.bits),
+            "--q-group-size",
+            "64",
+            "--mlx-path",
+            str(path),
+        )
+    return str(path)
+
+
+@app.command()
+def train(
+    run: Annotated[str, typer.Option(help="Folder for this run under data/train.")] = "phi4-mini",
+    model: str = DEFAULT_RUN.model,
+    bits: Annotated[
+        int | None, typer.Option(help="Quantize the frozen base for training; 0 keeps 16-bit.")
+    ] = DEFAULT_RUN.bits,
+    layers: Annotated[
+        int, typer.Option(help="Add LoRA to this many top blocks; -1 for all.")
+    ] = DEFAULT_RUN.layers,
+    rank: int = DEFAULT_RUN.rank,
+    scale: Annotated[float, typer.Option(help="LoRA alpha divided by rank.")] = DEFAULT_RUN.scale,
+    learning_rate: float = DEFAULT_RUN.learning_rate,
+    epochs: float = DEFAULT_RUN.epochs,
+    batch_size: int = DEFAULT_RUN.batch_size,
+    grad_accumulation: int = DEFAULT_RUN.grad_accumulation,
+    warmup: Annotated[float, typer.Option(help="Share of updates spent warming up.")] = (
+        DEFAULT_RUN.warmup
+    ),
+    max_seq_length: int = DEFAULT_RUN.max_seq_length,
+    grad_checkpoint: Annotated[
+        bool,
+        typer.Option(help="Recompute activations to save memory, at about a third more compute."),
+    ] = DEFAULT_RUN.grad_checkpoint,
+    iters: Annotated[
+        int | None, typer.Option(help="Stop after this many batches, for trial runs.")
+    ] = None,
+) -> None:
+    """Fine-tune the base model with LoRA on the sft split, using mlx-lm."""
+    from transformers import AutoTokenizer
+
+    params = LoRARun(
+        model=model,
+        bits=bits or None,
+        layers=layers,
+        rank=rank,
+        scale=scale,
+        learning_rate=learning_rate,
+        epochs=epochs,
+        batch_size=batch_size,
+        grad_accumulation=grad_accumulation,
+        warmup=warmup,
+        max_seq_length=max_seq_length,
+        grad_checkpoint=grad_checkpoint,
+    )
+    data_dir = Settings().data_dir
+    run_dir = data_dir / "train" / run
+    weights = _training_weights(params, data_dir / "models")
+    tokenizer = AutoTokenizer.from_pretrained(params.model)
+    stats = export(
+        data_dir / "processed" / "sft",
+        run_dir / "data",
+        lambda messages: len(tokenizer.apply_chat_template(messages, return_dict=False)),
+        params.max_seq_length,
+    )
+    for key, value in stats.items():
+        typer.echo(f"{key}: {value}")
+    config = params.mlx_config(
+        weights, run_dir / "data", run_dir / "adapters", stats["train: kept"], iters
+    )
+    config_path = run_dir / "lora.yaml"
+    config_path.write_text(yaml.safe_dump(config, sort_keys=False))
+    (run_dir / "run.json").write_text(params.model_dump_json(indent=2))
+    _log(f"training for {config['iters']} batches with {config_path}")
+    _mlx_lm("lora", "--config", str(config_path))
+
+
+@app.command()
+def fuse(
+    run: Annotated[str, typer.Option(help="Folder of the run under data/train.")] = "phi4-mini",
+) -> None:
+    """Merge a run's adapter into the 16-bit base model and save a Hugging Face folder."""
+    run_dir = Settings().data_dir / "train" / run
+    params = LoRARun.model_validate_json((run_dir / "run.json").read_text())
+    _mlx_lm(
+        "fuse",
+        "--model",
+        params.model,
+        "--adapter-path",
+        str(run_dir / "adapters"),
+        "--save-path",
+        str(run_dir / "fused"),
+    )
