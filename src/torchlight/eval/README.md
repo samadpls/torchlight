@@ -1,6 +1,6 @@
 # Evaluating the model
 
-This folder tests the fine-tuned model against models that were not fine-tuned but can search the forum instead. Five setups answer the same 260 questions. Then Claude Opus 5.5, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread.
+This folder tests the fine-tuned model against models that were not fine-tuned but can search the forum instead. Four setups answer the same 260 questions. Then Claude Opus 5.5, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread.
 
 ## Results
 
@@ -10,7 +10,6 @@ This folder tests the fine-tuned model against models that were not fine-tuned b
 | Phi-4-mini + forum search | 1.75 | 5% | 145 of 157 | 1 of 7 | 2% | 0.1 |
 | torchlight (fine-tuned) | 1.97 | 7% | 9 of 10 | 0 of 7 | 7% | 0.0 |
 | torchlight + forum search | 1.95 | 6% | 4 of 4 | 0 of 7 | 2% | 0.0 |
-| Claude Sonnet 5.5 + forum search (reference) | 4.66 | 93% | 119 of 119 | 0 of 7 | 7% | 0.1 |
 
 **What the results show**
 
@@ -20,9 +19,8 @@ This folder tests the fine-tuned model against models that were not fine-tuned b
 - **torchlight beats the base model with search,** 1.97 against 1.75 (95% interval +0.09 to +0.35).
 - **torchlight never uses the search tool.** It was trained on chats without tools, so adding search changes nothing.
 - **Its answers are much shorter.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32. It rarely writes code. 4 answers (1.5%) got stuck repeating a phrase.
-- **Claude Sonnet 5.5 with search scores 4.66.** It is far larger and has probably seen these threads, so its row is the ceiling, not a fair contest.
 
-## The five setups
+## The four setups
 
 | Setup | Can search the forum | Letter in `--arm` |
 |---|---|---|
@@ -30,19 +28,18 @@ This folder tests the fine-tuned model against models that were not fine-tuned b
 | Phi-4-mini + forum search | yes | B |
 | torchlight (fine-tuned) | no | D |
 | torchlight + forum search | yes | E |
-| Claude Sonnet 5.5 + forum search (reference) | yes | C |
 
-The four Phi-4-mini setups are the real comparison: same size, with and without fine-tuning, with and without search. Claude Sonnet 5.5 shows the ceiling.
+All four use the same model size: with and without fine-tuning, and with and without search.
 
 - **Questions.** The 260 questions in the dataset's `eval` config. They were asked between 2025-01-01 and 2026-10-08, after the base model's data ends (June 2024) and after every training thread.
 - **Search.** The `search_forum` tool does keyword search (BM25) over 7,438 solved training threads and returns the top 3. A model may search up to twice per question. It decides itself whether to search.
 - **Prompt.** Every setup gets the same system prompt as in training.
 - **Settings.** The local models use greedy decoding (no sampling) and up to 1,024 new tokens.
-- **Claude Sonnet 5.5.** Runs as Claude Code agents with the same search tool. It has probably seen many of these threads, so its row is a reference point.
+- **Reference answer.** Each question also got an answer from Claude Sonnet 5.5 with the same search tool, written by Claude Code agents from `torchlight batches questions`. The judge scored it too, but it isn't in the results, which compare models of the same size.
 
 ## How answers are scored
 
-The judge is Claude Opus 5.5, run as Claude Code agents that follow [`prompts/judge.md`](../../../prompts/judge.md). For each question it sees the question, the answer that solved the thread, and the five answers, shuffled and without names. For each answer it gives:
+The judge is Claude Opus 5.5, run as Claude Code agents that follow [`prompts/judge.md`](../../../prompts/judge.md). For each question it sees the question, the answer that solved the thread, and all the answers, shuffled and without names. For each answer it gives:
 
 - **A score from 1 to 5.** 5 means the same fix as the real answer, or one just as correct. 3 means on topic but too general. 1 means wrong, or uses functions that PyTorch doesn't have.
 - **Whether it asks for more details.** Some questions can't be answered without the user's code or full error. For those, asking is the right move, and scores well.
@@ -54,7 +51,7 @@ A script also checks the code in each answer: every `torch.*` name must exist in
 ```bash
 uv run torchlight index               # build the search index
 uv run torchlight answer --arm A      # also B, D and E; 10 to 35 minutes each on a MacBook Pro (M3 Pro)
-uv run torchlight batches questions   # questions for Claude Sonnet 5.5
+uv run torchlight batches questions   # questions for the reference answers
 uv run torchlight batches judge       # scoring batches, once every setup has answered
 uv run torchlight report              # the results table
 ```

@@ -56,7 +56,7 @@ Use the same system prompt as in the examples. The model was trained with it.
 
 ## 📊 Evaluation
 
-We asked {eval_count} forum questions from {eval_since} to {eval_until} to five setups. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread.
+We asked {eval_count} forum questions from {eval_since} to {eval_until} to four setups. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread.
 
 {results_table}
 
@@ -65,12 +65,12 @@ We asked {eval_count} forum questions from {eval_since} to {eval_until} to five 
 <details>
 <summary><b>How the test works</b></summary>
 
-- **Setups.** Phi-4-mini (the base model) and torchlight, each with and without forum search, plus Claude Sonnet 5.5 with forum search as a reference. Search covers {search_docs:,} solved forum threads, up to twice per question.
+- **Setups.** Phi-4-mini (the base model) and torchlight, each with and without forum search. Search covers {search_docs:,} solved forum threads, up to twice per question.
 - **Settings.** The local models use greedy decoding (no sampling) and up to 1,024 new tokens.
-- **Scoring.** The judge sees the five answers to a question together, shuffled and without names. It follows [`prompts/judge.md`](https://github.com/samadpls/torchlight/blob/main/prompts/judge.md).
+- **Scoring.** The judge sees all the answers to a question together, shuffled and without names. It follows [`prompts/judge.md`](https://github.com/samadpls/torchlight/blob/main/prompts/judge.md).
 - **Valid torch APIs.** A script checks that every `torch.*` name in an answer's code exists in PyTorch 2.15.
 - **Asks for details.** How often an answer asks for more information. This is measured on the {clarify_count} questions where the expert also asked, and on the other {answerable_count}, where asking less is better.
-- **Note on Claude Sonnet 5.5.** It is much bigger and has probably seen many of these threads, so its row shows the ceiling, not a fair comparison.
+- **Reference answer.** For each question, the judge also scored an answer from Claude Sonnet 5.5 with the same search. It isn't in the table, which compares models of the same size.
 
 </details>
 
