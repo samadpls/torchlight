@@ -9,7 +9,7 @@ from torchlight.schemas import EvalExample
 ARM_NAMES = {
     "A": "Phi-4-mini (base model)",
     "B": "Phi-4-mini + forum search",
-    "C": "Larger LLM + forum search (reference)",
+    "C": "Claude Sonnet 5.5 + forum search (reference)",
     "D": "torchlight (fine-tuned)",
     "E": "torchlight + forum search",
 }
