@@ -12,8 +12,8 @@
 </p>
 
 <p align="center">
-  <b>A humble PyTorch helper, trained on resolved forum threads.</b><br>
-  It gives a specific fix when the question has enough detail, and asks for a minimal repro when it doesn't.
+  <b>A PyTorch helper trained on the answers that solved real forum threads.</b><br>
+  It gives a specific fix when a question has enough detail, and asks for the code or the error when it doesn't.
 </p>
 
 ---
@@ -24,7 +24,7 @@ torchlight is a small model that helps with PyTorch questions. It learned from [
 |---|---|---|---|
 | 1 | [Dataset](#1-dataset) | 7,354 forum questions with the answers that solved them | [`torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) |
 | 2 | [Model](#2-model) | Phi-4-mini-instruct (3.8B), fine-tuned on a MacBook | [`torchlight-phi4-mini`](https://huggingface.co/samadpls/torchlight-phi4-mini), also as a [LoRA adapter](https://huggingface.co/samadpls/torchlight-phi4-mini-lora) and [GGUF](https://huggingface.co/samadpls/torchlight-phi4-mini-GGUF) |
-| 3 | [Evaluation](#3-evaluation) | The model compared with its base model, with forum search, and with a larger LLM | [Results below](#3-evaluation) |
+| 3 | [Evaluation](#3-evaluation) | The model compared with its base model, with forum search, and with Claude Sonnet 5.5 | [Results below](#3-evaluation) |
 
 ⭐ If you find it useful, star the repo.
 
@@ -88,7 +88,7 @@ More: [training settings, full loss table and how to run it](src/torchlight/trai
 
 ## 3. Evaluation
 
-Five setups answer the 260 test questions: Phi-4-mini and torchlight, each with and without forum search, and a larger LLM with search as a reference. A larger LLM, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread. It sees the answers shuffled and without names.
+Five setups answer the 260 test questions: Phi-4-mini and torchlight, each with and without forum search, and Claude Sonnet 5.5 with search as a reference. Claude Opus 5.5, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread. It sees the answers shuffled and without names.
 
 The evaluation is still running. Results will be added here when it finishes.
 
@@ -115,7 +115,7 @@ uv run torchlight batches judge
 uv run torchlight report
 ```
 
-The review step, the larger LLM and the judge run as LLM agents in a coding-agent CLI, so no API key is needed. Each folder's README explains its steps.
+The dataset review runs as small LLM agents. In the evaluation, Claude Sonnet 5.5 and the judge (Claude Opus 5.5) run as Claude Code agents. No API key is needed. Each folder's README explains its steps.
 
 <details>
 <summary><b>Repo layout</b></summary>

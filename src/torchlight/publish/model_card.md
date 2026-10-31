@@ -22,7 +22,7 @@
 
 torchlight is a small model that helps with PyTorch questions. It is [Phi-4-mini-instruct](https://huggingface.co/{base_model}) (3.8B parameters), fine-tuned on {train_rows:,} questions from the [PyTorch forums](https://discuss.pytorch.org). Each question is paired with the answer that solved it.
 
-The goal is a humble helper. When a question has enough detail, it suggests a fix. When it doesn't, it asks for the code or the full error.
+It is built not to guess. When a question has enough detail, it suggests a fix. When it doesn't, it asks for the code or the full error.
 
 - **Trained on real answers.** Each answer is the post that solved the thread. Most were written by [ptrblck](https://discuss.pytorch.org/u/ptrblck).
 - **Tested on new questions.** {eval_count} forum questions that are newer than anything the model saw in training.
@@ -56,7 +56,7 @@ Use the same system prompt as in the examples. The model was trained with it.
 
 ## 📊 Evaluation
 
-We ask {eval_count} forum questions from {eval_since} to {eval_until} to five setups. A larger LLM, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread.
+We ask {eval_count} forum questions from {eval_since} to {eval_until} to five setups. Claude Opus 5.5, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread.
 
 {results_table}
 
@@ -65,12 +65,12 @@ We ask {eval_count} forum questions from {eval_since} to {eval_until} to five se
 <details>
 <summary><b>How the test works</b></summary>
 
-- **Setups.** Phi-4-mini (the base model) and torchlight, each with and without forum search, plus a larger LLM with forum search as a reference. Search covers {search_docs:,} solved forum threads, up to twice per question.
+- **Setups.** Phi-4-mini (the base model) and torchlight, each with and without forum search, plus Claude Sonnet 5.5 with forum search as a reference. Search covers {search_docs:,} solved forum threads, up to twice per question.
 - **Settings.** The local models use greedy decoding (no sampling) and up to 1,024 new tokens.
 - **Scoring.** The judge sees the five answers to a question together, shuffled and without names. It follows [`prompts/judge.md`](https://github.com/samadpls/torchlight/blob/main/prompts/judge.md).
 - **Valid torch APIs.** A script checks that every `torch.*` name in an answer's code exists in PyTorch 2.15.
 - **Asks for details.** How often an answer asks for more information. This is measured on the {clarify_count} questions where the expert also asked, and on the other {answerable_count}, where asking less is better.
-- **Note on the larger LLM.** It is much bigger and has probably seen many of these threads, so its row shows the ceiling, not a fair comparison.
+- **Note on Claude Sonnet 5.5.** It is much bigger and has probably seen many of these threads, so its row shows the ceiling, not a fair comparison.
 
 </details>
 
