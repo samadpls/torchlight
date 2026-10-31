@@ -4,21 +4,20 @@ This folder tests the fine-tuned model against models that were not fine-tuned b
 
 ## Results
 
-| Model | Average grade (out of 5) | Graded 4 or 5 | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
-|---|---|---|---|---|---|---|
-| Phi-4-mini (base model) | 1.88 | 5% | 170 of 175 | 0 of 7 | 0% | 0.0 |
-| Phi-4-mini + forum search | 1.75 | 5% | 145 of 157 | 1 of 7 | 2% | 0.1 |
-| torchlight (fine-tuned) | 1.97 | 7% | 9 of 10 | 0 of 7 | 7% | 0.0 |
-| torchlight + forum search | 1.95 | 6% | 4 of 4 | 0 of 7 | 2% | 0.0 |
+| Model | Average grade (out of 5) | Graded 4 or 5 | Wrong answers (graded 1) | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
+|---|---|---|---|---|---|---|---|
+| Phi-4-mini (base model) | 1.88 | 5% | 39% | 170 of 175 | 0 of 7 | 0% | 0.0 |
+| Phi-4-mini + forum search | 1.75 | 5% | 45% | 145 of 157 | 1 of 7 | 2% | 0.1 |
+| torchlight (fine-tuned) | 1.97 | 7% | 27% | 9 of 10 | 0 of 7 | 7% | 0.0 |
+| torchlight + forum search | 1.95 | 6% | 26% | 4 of 4 | 0 of 7 | 2% | 0.0 |
 
 **What the results show**
 
-- **A 3.8B model doesn't solve most of these questions.** The base model and torchlight, with or without search, all score between 1.75 and 1.97 out of 5. Fewer than 1 answer in 10 scores 4 or 5. The questions are from 2025 and 2026, often about new releases or specific hardware, and the model's knowledge ends in mid-2024.
-- **Fine-tuning helped a little, but not clearly.** torchlight scores 1.97 against 1.88 for the base model. It gives fewer answers that are flatly wrong (71 scored 1, against 102). But the gain is within the noise: the 95% interval is −0.05 to +0.22.
-- **Search made the base model worse.** It searched on 23 questions. On those, it scored 1.35 against 1.87 without search, because the threads it found often pulled it off topic.
-- **torchlight beats the base model with search,** 1.97 against 1.75 (95% interval +0.09 to +0.35).
-- **torchlight never uses the search tool.** It was trained on chats without tools, so adding search changes nothing.
-- **Its answers are much shorter.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32. It rarely writes code. 4 answers (1.5%) got stuck repeating a phrase.
+- **Far fewer wrong answers.** 27% of torchlight's answers were graded 1 (wrong), against 39% for the base model: 71 against 102. That gap is real, not chance (p = 0.003).
+- **Better than giving the base model forum search.** torchlight averages 1.97 against 1.75 (95% interval +0.09 to +0.35). Search pulled the small base model off topic: on the 23 questions where it searched, it averaged 1.35.
+- **Short and fast.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32.
+- **The test is hard by design.** The questions are real forum posts from 2025 and 2026, after the model's knowledge ends, and a 4 or 5 needs the same fix that solved the thread. Every small setup gets a 4 or 5 on only 5–7% of questions. torchlight raises the average grade from 1.88 to 1.97 and good answers from 14 to 19, but those gaps are too small to be sure of.
+- **torchlight never uses the search tool.** None of its training chats included tools, so adding search changes nothing.
 - **A bigger or newer base model would likely do better.** Fine-tuning taught the model the forum's style, but what it knows is limited by its size (3.8B parameters) and by data that ends in mid-2024. The same training on a larger or more recent model is the next step. We haven't tested it yet.
 
 ## The four setups
