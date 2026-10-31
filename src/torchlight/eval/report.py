@@ -36,7 +36,7 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
         grades_by_arm[grade.arm].append(grade)
 
     rows = [
-        "| Model | Score (1-5) | Scored 4 or 5 | Code with only real torch APIs | "
+        "| Model | Average grade (out of 5) | Graded 4 or 5 | Code with only real torch APIs | "
         "Asked for details, when they were missing | Asked for details, when not needed | "
         "Searches per question |",
         "|---|---|---|---|---|---|---|",

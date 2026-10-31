@@ -90,7 +90,7 @@ More: [training settings, full loss table and how to run it](src/torchlight/trai
 
 Four setups answered the 260 test questions: Phi-4-mini and torchlight, each with and without forum search. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread. It saw the answers shuffled and without names.
 
-| Model | Score (1-5) | Scored 4 or 5 | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
+| Model | Average grade (out of 5) | Graded 4 or 5 | Code with only real torch APIs | Asked for details, when they were missing | Asked for details, when not needed | Searches per question |
 |---|---|---|---|---|---|---|
 | Phi-4-mini (base model) | 1.88 | 5% | 170 of 175 | 0 of 7 | 0% | 0.0 |
 | Phi-4-mini + forum search | 1.75 | 5% | 145 of 157 | 1 of 7 | 2% | 0.1 |
@@ -105,6 +105,7 @@ Four setups answered the 260 test questions: Phi-4-mini and torchlight, each wit
 - **torchlight beats the base model with search,** 1.97 against 1.75 (95% interval +0.09 to +0.35).
 - **torchlight never uses the search tool.** It was trained on chats without tools, so adding search changes nothing.
 - **Its answers are much shorter.** The median answer is 31 tokens, against 690 for the base model, and it answered all 260 questions in 9 minutes, against 32. It rarely writes code. 4 answers (1.5%) got stuck repeating a phrase.
+- **A bigger or newer base model would likely do better.** Fine-tuning taught the model the forum's style, but what it knows is limited by its size (3.8B parameters) and by data that ends in mid-2024. The same training on a larger or more recent model is the next step. We haven't tested it yet.
 
 More: [how the test works and how to rerun it](src/torchlight/eval/).
 
