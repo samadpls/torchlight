@@ -22,7 +22,7 @@
 
 torchlight is a small model that helps with PyTorch questions. It is [Phi-4-mini-instruct](https://huggingface.co/{base_model}) (3.8B parameters), fine-tuned on {train_rows:,} questions from the [PyTorch forums](https://discuss.pytorch.org). Each question is paired with the answer that solved it.
 
-It is built not to guess. When a question has enough detail, it suggests a fix. When it doesn't, it asks for the code or the full error.
+It was trained not to guess: when a question has enough detail, suggest a fix; when it doesn't, ask for the code or the full error.
 
 - **Trained on real answers.** Each answer is the post that solved the thread. Most were written by [ptrblck](https://discuss.pytorch.org/u/ptrblck).
 - **Tested on new questions.** {eval_count} forum questions that are newer than anything the model saw in training.
@@ -56,7 +56,7 @@ Use the same system prompt as in the examples. The model was trained with it.
 
 ## 📊 Evaluation
 
-We ask {eval_count} forum questions from {eval_since} to {eval_until} to five setups. Claude Opus 5.5, acting as judge, scores each answer from 1 to 5 by comparing it with the answer that solved the thread.
+We asked {eval_count} forum questions from {eval_since} to {eval_until} to five setups. Claude Opus 5.5, acting as judge, scored each answer from 1 to 5 by comparing it with the answer that solved the thread.
 
 {results_table}
 
@@ -112,6 +112,8 @@ Training loss is the average since the previous row. Batch 0 is the base model b
 ## ⚠️ Limitations
 
 - It is a small model and can be wrong while sounding sure. Check its code.
+- On new forum questions it rarely finds the real fix on its own (see Evaluation). Use it for quick first ideas, not final answers.
+- It asks for missing details less often than it should.
 - It learned the forum's style, so its answers are short. Sometimes they are too short to help on their own.
 - It knows PyTorch up to mid-2024, not version 2.4 or later.
 - The training data leans toward ptrblck's topics: debugging, CUDA, training loops and shape errors.

@@ -1,3 +1,4 @@
+import ast
 import json
 import re
 from collections.abc import Iterator
@@ -26,6 +27,12 @@ TOKEN_BUDGET = 24_576
 MAX_BATCH = 16
 # Phi-4-mini wraps calls in <|tool_call|> tokens; vLLM's parser for it also accepts functools[...].
 TOOL_CALL = re.compile(r"<\|tool_call\|>(.*?)(?:<\|/tool_call\|>|$)|functools(\[.*\])", re.DOTALL)
+# Without those tokens, the base model often writes the call as JSON after a sentence such as
+# "let me search", or as a Python call in a code block.
+JSON_CALL = re.compile(r'(\[\s*)?\{\s*"name"\s*:\s*"search_forum"')
+PYTHON_CALL = re.compile(
+    r"""search_forum\(\s*(?:query\s*=\s*)?("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')"""
+)
 SPECIAL_TOKEN = re.compile(r"<\|[a-z_/]+\|>")
 
 
@@ -51,15 +58,7 @@ def _calls(payload: Any) -> Iterator[tuple[str | None, Any]]:
         yield function.get("name"), arguments
 
 
-def tool_query(text: str) -> str | None:
-    """The query of a search_forum call in the model's reply, if it made one."""
-    match = TOOL_CALL.search(text)
-    if match:
-        candidate = match.group(1) or match.group(2)
-    elif text.lstrip().startswith(("[", "{")):
-        candidate = text.strip()
-    else:
-        return None
+def _json_query(candidate: str) -> str | None:
     starts = [i for i in (candidate.find("["), candidate.find("{")) if i >= 0]
     if not starts:
         return None
@@ -73,8 +72,28 @@ def tool_query(text: str) -> str | None:
     return None
 
 
+def tool_query(text: str) -> str | None:
+    """The query of a search_forum call in the model's reply, if it made one."""
+    candidates = [m.group(1) or m.group(2) for m in TOOL_CALL.finditer(text)]
+    candidates += [text[m.start() :] for m in JSON_CALL.finditer(text)]
+    for candidate in candidates:
+        if query := _json_query(candidate):
+            return query
+    if match := PYTHON_CALL.search(text):
+        return str(ast.literal_eval(match[1]))
+    return None
+
+
 def clean(text: str) -> str:
-    return SPECIAL_TOKEN.sub("", TOOL_CALL.sub("", text)).strip()
+    """The answer without special tokens or tool calls."""
+    text = TOOL_CALL.sub("", text)
+    while match := JSON_CALL.search(text):
+        try:
+            _, end = json.JSONDecoder().raw_decode(text, match.start())
+        except ValueError:
+            break
+        text = text[: match.start()] + text[end:]
+    return SPECIAL_TOKEN.sub("", text).strip()
 
 
 def system_message(with_tool: bool) -> dict[str, str]:
