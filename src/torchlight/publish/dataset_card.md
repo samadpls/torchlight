@@ -80,6 +80,8 @@ print(sft["train"][0]["messages"])
 
 The splits are by date, never random, so every evaluation question is newer than anything in training.
 
+The `threads` config holds every thread, including the ones behind the evaluation questions; its only split is called `train` because Hugging Face needs a split name. Each row's real split is in its `split` column. If you train on `threads`, keep only rows where `split` is `train`, or you will train on the test answers.
+
 ## How answers were chosen
 
 1. **Accepted solution.** If a post is marked as the solution, it is the answer. When the asker marked their own thank-you post, the answer is the post they were thanking.
