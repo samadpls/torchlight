@@ -44,7 +44,7 @@ configs:
 
 The threads are the {user_threads:,} topics that [ptrblck](https://discuss.pytorch.org/u/ptrblck), the forum's most active answerer, took part in, plus {recent_threads:,} recent solved topics from other answerers for evaluation. Which answer counts comes from the forum's own signals, not from who wrote it: the accepted solution, or the post the asker said fixed their problem.
 
-The dataset was built to fine-tune and evaluate **torchlight**, a small PyTorch helper that gives a specific fix when it can and asks for a minimal repro when it can't.
+The dataset was built to fine-tune and evaluate **torchlight**, a small PyTorch helper trained to give a specific fix when it can and to ask for a minimal repro when it can't.
 
 ## At a glance
 

@@ -22,7 +22,7 @@ torchlight is a small model that helps with PyTorch questions. It learned from [
 
 | | Part | What it is | Where to get it |
 |---|---|---|---|
-| 1 | [Dataset](#1-dataset) | 7,354 forum questions with the answers that solved them | [`torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) |
+| 1 | [Dataset](#1-dataset) | 6,841 forum questions, each with the answer that solved it | [`torchlight-threads`](https://huggingface.co/datasets/samadpls/torchlight-threads) |
 | 2 | [Model](#2-model) | Phi-4-mini-instruct (3.8B), fine-tuned on a MacBook | [`torchlight-phi4-mini`](https://huggingface.co/samadpls/torchlight-phi4-mini), also as a [LoRA adapter](https://huggingface.co/samadpls/torchlight-phi4-mini-lora) and [GGUF](https://huggingface.co/samadpls/torchlight-phi4-mini-GGUF) |
 | 3 | [Evaluation](#3-evaluation) | The model compared with its base model, with and without forum search | [Results below](#3-evaluation) |
 

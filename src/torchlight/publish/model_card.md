@@ -20,7 +20,7 @@
 
 ## Model Overview
 
-torchlight is a small model that helps with PyTorch questions. It is [Phi-4-mini-instruct](https://huggingface.co/{base_model}) (3.8B parameters), fine-tuned on {train_rows:,} questions from the [PyTorch forums](https://discuss.pytorch.org). Each question is paired with the answer that solved it.
+torchlight is a small model that helps with PyTorch questions. It is [Phi-4-mini-instruct](https://huggingface.co/{base_model}) (3.8B parameters), fine-tuned on {train_rows:,} chats from the [PyTorch forums](https://discuss.pytorch.org). Most end with the answer that solved the thread; the rest teach it to ask for missing details.
 
 It was trained not to guess: when a question has enough detail, suggest a fix; when it doesn't, ask for the code or the full error.
 
