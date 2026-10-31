@@ -84,7 +84,7 @@ The splits are by date, never random, so every evaluation question is newer than
 
 1. **Accepted solution.** If a post is marked as the solution, it is the answer. When the asker marked their own thank-you post, the answer is the post they were thanking.
 2. **Asker confirmation.** Otherwise, if the asker later said the fix worked ("that solved it", "works now"), the answer is the post they were replying to.
-3. **Review.** A Claude Haiku agent following [`prompts/review.md`](https://github.com/samadpls/torchlight/blob/main/prompts/review.md) reviewed every evaluation answer, plus training answers that were only a question, under 60 characters, mostly a link, or pointing at other posts. It kept the post, dropped the thread, or combined several posts into one answer.
+3. **Review.** A small LLM agent following [`prompts/review.md`](https://github.com/samadpls/torchlight/blob/main/prompts/review.md) reviewed every evaluation answer, plus training answers that were only a question, under 60 characters, mostly a link, or pointing at other posts. It kept the post, dropped the thread, or combined several posts into one answer.
 4. **Grounding check.** A combined answer is rejected unless every code block in it appears verbatim in its source posts.
 
 **Tiers:** `gold` answers are accepted solutions; `silver` answers were confirmed by the asker. The `eval` config is gold only.

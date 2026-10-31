@@ -62,7 +62,7 @@ flowchart LR
 <details>
 <summary><b>How the review step runs</b></summary>
 
-`torchlight build` writes the threads that need review to `data/review/batches/`. An agent (Claude Code or Codex CLI) reviews each batch by following [`prompts/review.md`](../../../prompts/review.md) and writes its result to `data/review/results/`. Run `torchlight build` again to apply the results. Results are kept by thread id, so a rebuild only sends new threads for review.
+`torchlight build` writes the threads that need review to `data/review/batches/`. A small LLM agent reviews each batch by following [`prompts/review.md`](../../../prompts/review.md) and writes its result to `data/review/results/`. Run `torchlight build` again to apply the results. Results are kept by thread id, so a rebuild only sends new threads for review.
 </details>
 
 ## The dataset this crawl produced

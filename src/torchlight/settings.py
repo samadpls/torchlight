@@ -11,4 +11,3 @@ class Settings(BaseSettings):
     hf_token: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("HF_TOKEN", "HF_API")
     )
-    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")

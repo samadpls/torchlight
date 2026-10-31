@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -18,6 +19,9 @@ from torchlight.settings import Settings
 from torchlight.train import LoRARun, export
 
 DEFAULT_RUN = LoRARun()
+HUB_REPO = "samadpls/torchlight-phi4-mini"
+GGUF_QUANTS = ("Q4_K_M", "Q8_0")
+HUB_KINDS = ("model", "lora", "gguf")
 
 app = typer.Typer(no_args_is_help=True, add_completion=False)
 
@@ -26,7 +30,9 @@ app = typer.Typer(no_args_is_help=True, add_completion=False)
 def main() -> None:
     """Build the torchlight dataset, train the model and evaluate it."""
     # Downloads and caches stay inside the project, so deleting it frees them.
-    os.environ.setdefault("HF_HOME", str(Settings().data_dir.resolve() / "hf"))
+    data_dir = Settings().data_dir.resolve()
+    os.environ.setdefault("HF_HOME", str(data_dir / "hf"))
+    os.environ.setdefault("MPLCONFIGDIR", str(data_dir / "matplotlib"))
 
 
 def _is_set(secret: SecretStr | None) -> bool:
@@ -43,7 +49,6 @@ def settings() -> None:
     s = Settings()
     typer.echo(f"data_dir: {s.data_dir.resolve()}")
     typer.echo(f"HF token: {'set' if _is_set(s.hf_token) else 'missing'}")
-    typer.echo(f"Anthropic API key: {'set' if _is_set(s.anthropic_api_key) else 'missing'}")
 
 
 @app.command()
@@ -318,3 +323,161 @@ def report() -> None:
     (data_dir / "eval" / "results.md").write_text(table + "\n")
     typer.echo(table)
     typer.echo(f"\n{len(grades)} grades, {invalid} items missing or malformed")
+
+
+def _lines(path: Path) -> int:
+    with path.open() as f:
+        return sum(1 for _ in f)
+
+
+def _publish_dirs(run_dir: Path) -> dict[str, Path]:
+    return {"model": run_dir / "fused", "lora": run_dir / "lora", "gguf": run_dir / "gguf"}
+
+
+@app.command("export")
+def export_run(
+    run: Annotated[str, typer.Option(help="Folder of the run under data/train.")] = "phi4-mini",
+    repo: Annotated[str, typer.Option(help="Hub repo of the merged model; names GGUF files.")] = (
+        HUB_REPO
+    ),
+    quants: Annotated[
+        list[str] | None, typer.Option(help=f"llama.cpp quant types [default: {GGUF_QUANTS}].")
+    ] = None,
+    llama_cpp: Annotated[
+        Path | None, typer.Option(help="A llama.cpp checkout; defaults to data/tools/llama.cpp.")
+    ] = None,
+) -> None:
+    """Tidy a fused run's model files, and write its adapter in PEFT format and its GGUF
+    quants, ready to publish."""
+    from torchlight.publish.export import gguf_files, match_base_files, peft_adapter
+
+    data_dir = Settings().data_dir
+    run_dir = data_dir / "train" / run
+    dirs = _publish_dirs(run_dir)
+    params = LoRARun.model_validate_json((run_dir / "run.json").read_text())
+    match_base_files(dirs["model"], params.model)
+    modules = peft_adapter(run_dir / "adapters", dirs["lora"], params)
+    _log(f"wrote the PEFT adapter for {modules} modules to {dirs['lora']}")
+    paths = gguf_files(
+        dirs["model"],
+        dirs["gguf"],
+        repo.split("/")[-1],
+        llama_cpp or data_dir / "tools" / "llama.cpp",
+        quants or list(GGUF_QUANTS),
+    )
+    for path in paths:
+        _log(f"wrote {path} ({path.stat().st_size / 1e9:.1f} GB)")
+
+
+@app.command()
+def card(
+    run: Annotated[str, typer.Option(help="Folder of the run under data/train.")] = "phi4-mini",
+    repo: Annotated[str, typer.Option(help="Hub repo of the merged model.")] = HUB_REPO,
+    valid_since: Annotated[datetime, typer.Option(formats=["%Y-%m-%d"])] = datetime(2024, 7, 1),
+    notes: Annotated[
+        Path | None, typer.Option(help="Markdown to add under the results table.")
+    ] = None,
+) -> None:
+    """Write the model cards and the loss chart for the merged model, adapter and GGUF repos."""
+    from importlib.metadata import version
+
+    from torchlight.publish.card import model_card
+    from torchlight.publish.charts import plot_losses
+    from torchlight.train.log import loss_table, read_log
+
+    data_dir = Settings().data_dir
+    run_dir = data_dir / "train" / run
+    params = LoRARun.model_validate_json((run_dir / "run.json").read_text())
+    config = yaml.safe_load((run_dir / "lora.yaml").read_text())
+    log = read_log(run_dir / "train.log")
+    batches = config["iters"]
+    started = (run_dir / "lora.yaml").stat().st_mtime
+    hours = ((run_dir / "adapters" / "adapters.safetensors").stat().st_mtime - started) / 3600
+    train_rows = _lines(run_dir / "data" / "train.jsonl")
+    examples = _eval_examples()
+    clarify = sum(e.needs_clarification for e in examples)
+    facts = {
+        "train_rows": train_rows,
+        "dropped": _lines(data_dir / "processed" / "sft" / "train.jsonl") - train_rows,
+        "validation_rows": _lines(run_dir / "data" / "valid.jsonl"),
+        "valid_since": f"{valid_since:%Y-%m-%d}",
+        "eval_since": json.loads((data_dir / "raw" / "topic_ids.json").read_text())["eval_since"],
+        "eval_until": f"{max(e.created_at for e in examples):%Y-%m-%d}",
+        "eval_count": len(examples),
+        "clarify_count": clarify,
+        "answerable_count": len(examples) - clarify,
+        "search_docs": _lines(data_dir / "retrieval" / "docs.jsonl"),
+        "batches": batches,
+        "updates": batches // params.grad_accumulation,
+        "warmup_updates": config["lr_schedule"]["warmup"],
+        "hours": hours,
+        "seconds_per_batch": hours * 3600 / batches,
+        "trainable": f"{log.trainable_millions:.1f}M",
+        "trainable_share": f"{log.trainable_percent:.2f}%",
+        "optimizer": {"adamw": "AdamW", "adam": "Adam", "sgd": "SGD"}.get(
+            config["optimizer"], config["optimizer"]
+        ),
+        "mlx_lm": version("mlx-lm"),
+        "mlx": version("mlx"),
+    }
+    chart = Path("assets/training-loss.png")
+    plot_losses(
+        log,
+        chart,
+        f"LoRA fine-tune of {params.model.split('/')[-1]}",
+        f"One epoch over {train_rows:,} forum chats on a MacBook Pro (M3 Pro)",
+    )
+    results_path = data_dir / "eval" / "results.md"
+    results = (
+        results_path.read_text().strip()
+        if results_path.exists()
+        else "The evaluation is still running. Results will be added here when it finishes."
+    )
+    for kind, folder in _publish_dirs(run_dir).items():
+        if not folder.exists():
+            typer.echo(f"skipping {kind}: {folder} does not exist")
+            continue
+        gguf = {p.name: p.stat().st_size for p in sorted(folder.glob("*.gguf"))}
+        (folder / "README.md").write_text(
+            model_card(
+                kind,
+                repo,
+                params,
+                facts,
+                loss_table(log, batches),
+                results,
+                notes.read_text().strip() if notes else "",
+                gguf,
+            )
+        )
+        (folder / "assets").mkdir(exist_ok=True)
+        for asset in (Path("assets/hero.png"), chart):
+            shutil.copy(asset, folder / "assets" / asset.name)
+        typer.echo(f"wrote {folder / 'README.md'}")
+
+
+@app.command()
+def publish(
+    run: Annotated[str, typer.Option(help="Folder of the run under data/train.")] = "phi4-mini",
+    repo: Annotated[str, typer.Option(help="Hub repo of the merged model.")] = HUB_REPO,
+    kinds: Annotated[
+        list[str] | None, typer.Option("--kind", help="model, lora or gguf [default: all].")
+    ] = None,
+) -> None:
+    """Upload the merged model, the adapter and the GGUF quants to the Hugging Face Hub."""
+    from huggingface_hub import HfApi
+
+    from torchlight.publish.card import repo_names
+
+    settings = Settings()
+    if not _is_set(settings.hf_token):
+        raise typer.BadParameter("HF_TOKEN is not set in .env")
+    api = HfApi(token=settings.hf_token.get_secret_value())
+    dirs = _publish_dirs(settings.data_dir / "train" / run)
+    for kind in kinds or HUB_KINDS:
+        repo_id = repo_names(repo)[kind]
+        api.create_repo(repo_id, private=False, exist_ok=True)
+        api.upload_folder(
+            repo_id=repo_id, folder_path=dirs[kind], commit_message=f"Upload {kind} from torchlight"
+        )
+        _log(f"uploaded {dirs[kind]} to https://huggingface.co/{repo_id}")
