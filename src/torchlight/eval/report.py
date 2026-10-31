@@ -36,10 +36,11 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
         grades_by_arm[grade.arm].append(grade)
 
     rows = [
-        "| Model | Average grade (out of 5) | Graded 4 or 5 | Code with only real torch APIs | "
+        "| Model | Average grade (out of 5) | Graded 4 or 5 | Wrong answers (graded 1) | "
+        "Code with only real torch APIs | "
         "Asked for details, when they were missing | Asked for details, when not needed | "
         "Searches per question |",
-        "|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for arm in [a for a in REPORTED_ARMS if a in by_arm]:
         arm_answers = by_arm[arm]
@@ -52,6 +53,7 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
                     ARM_NAMES[arm],
                     f"{mean(g.score for g in arm_grades):.2f}" if arm_grades else "n/a",
                     _share([g.score >= 4 for g in arm_grades]),
+                    _share([g.score == 1 for g in arm_grades]),
                     _count([not invalid_names(a.answer) for a in with_code]),
                     _count([g.asks for g in arm_grades if needs_details[g.thread_id]]),
                     _share([g.asks for g in arm_grades if not needs_details[g.thread_id]]),

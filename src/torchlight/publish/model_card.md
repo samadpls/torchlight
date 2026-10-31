@@ -114,6 +114,7 @@ Training loss is the average since the previous row. Batch 0 is the base model b
 - It is a small model and can be wrong while sounding sure. Check its code.
 - On new forum questions it rarely finds the real fix on its own (see Evaluation). Use it for quick first ideas, not final answers.
 - It asks for missing details less often than it should.
+- With greedy decoding, about 1 answer in 65 gets stuck repeating a phrase. A repetition penalty or sampling avoids this.
 - It learned the forum's style, so its answers are short. Sometimes they are too short to help on their own.
 - It knows PyTorch up to mid-2024, not version 2.4 or later.
 - The training data leans toward ptrblck's topics: debugging, CUDA, training loops and shape errors.
