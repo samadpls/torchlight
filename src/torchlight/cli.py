@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -24,6 +25,8 @@ app = typer.Typer(no_args_is_help=True, add_completion=False)
 @app.callback()
 def main() -> None:
     """Build the torchlight dataset, train the model and evaluate it."""
+    # Downloads and caches stay inside the project, so deleting it frees them.
+    os.environ.setdefault("HF_HOME", str(Settings().data_dir.resolve() / "hf"))
 
 
 def _is_set(secret: SecretStr | None) -> bool:
@@ -184,3 +187,134 @@ def fuse(
         "--save-path",
         str(run_dir / "fused"),
     )
+
+
+LOCAL_ARMS = {"A": (False, False), "B": (False, True), "D": (True, False), "E": (True, True)}
+
+
+def _eval_examples() -> list:
+    from torchlight.schemas import EvalExample
+
+    path = Settings().data_dir / "processed" / "eval" / "test.jsonl"
+    return [EvalExample.model_validate_json(line) for line in path.read_text().splitlines()]
+
+
+@app.command()
+def index() -> None:
+    """Build the search_forum index over resolved training threads."""
+    from torchlight.retrieval import build_index, load_docs
+
+    data_dir = Settings().data_dir
+    docs = load_docs(data_dir / "processed" / "threads" / "threads.jsonl")
+    build_index(docs, data_dir / "retrieval")
+    typer.echo(f"indexed {len(docs)} threads")
+
+
+@app.command()
+def search(query: str, k: int = 3) -> None:
+    """Search resolved training threads, as the search_forum tool does."""
+    from torchlight.retrieval import ForumSearch, format_hits
+
+    typer.echo(format_hits(ForumSearch(Settings().data_dir / "retrieval").search(query, k)))
+
+
+@app.command()
+def answer(
+    arm: Annotated[
+        str, typer.Option(help="A or B for the base model, D or E for the fine-tuned one.")
+    ],
+    run: Annotated[str, typer.Option(help="Training run whose fused model D and E use.")] = (
+        "phi4-mini"
+    ),
+    max_tokens: int = 1024,
+    limit: Annotated[int | None, typer.Option(help="Answer only the first N questions.")] = None,
+) -> None:
+    """Answer the eval questions with a local model and save them for judging."""
+    import time
+
+    from mlx_lm import load
+
+    from torchlight.eval.generate import answer_all
+    from torchlight.retrieval import ForumSearch
+
+    fine_tuned, with_tool = LOCAL_ARMS[arm]
+    data_dir = Settings().data_dir
+    model_path = str(data_dir / "train" / run / "fused") if fine_tuned else DEFAULT_RUN.model
+    examples = _eval_examples()[:limit]
+    model, tokenizer = load(model_path)
+    search_tool = ForumSearch(data_dir / "retrieval") if with_tool else None
+    start = time.time()
+    answers = answer_all(model, tokenizer, arm, examples, search_tool, max_tokens)
+    seconds = time.time() - start
+    out = data_dir / "eval" / "answers" / f"{arm}.jsonl"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("".join(a.model_dump_json() + "\n" for a in answers))
+    tokens = sum(a.generated_tokens for a in answers)
+    searched = sum(bool(a.searches) for a in answers)
+    _log(
+        f"arm {arm}: {len(answers)} answers in {seconds / 60:.1f} min, {tokens} tokens, "
+        f"{searched} searched; wrote {out}"
+    )
+
+
+def _all_answers(data_dir: Path) -> list:
+    from torchlight.eval.batches import load_answers
+    from torchlight.eval.generate import Answer
+
+    answers = []
+    for path in sorted((data_dir / "eval" / "answers").glob("*.jsonl")):
+        answers += [Answer.model_validate_json(line) for line in path.read_text().splitlines()]
+    return answers + load_answers(data_dir / "eval" / "agent" / "results", "C")
+
+
+@app.command()
+def batches(
+    kind: Annotated[str, typer.Argument(help="questions (for arm C) or judge.")],
+    batch_size: int = 20,
+) -> None:
+    """Write batch files for arm C or the judge, run as LLM agents."""
+    from torchlight.build.examples import SYSTEM_PROMPT
+    from torchlight.eval.batches import judge_block, question_block, write_batches
+
+    data_dir = Settings().data_dir
+    examples = _eval_examples()
+    if kind == "questions":
+        out = data_dir / "eval" / "agent"
+        prompt = Path("prompts/answer.md").read_text().replace("{system_prompt}", SYSTEM_PROMPT)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "instructions.md").write_text(prompt)
+        count = write_batches([question_block(e) for e in examples], out / "batches", batch_size)
+    elif kind == "judge":
+        out = data_dir / "eval" / "judge"
+        by_item: dict[int, dict] = {}
+        for a in _all_answers(data_dir):
+            by_item.setdefault(a.thread_id, {})[a.arm] = a
+        blocks = [judge_block(e, by_item[e.thread_id]) for e in examples if e.thread_id in by_item]
+        out.mkdir(parents=True, exist_ok=True)
+        arms = {tid: sorted(answers) for tid, answers in by_item.items()}
+        (out / "arms.json").write_text(json.dumps(arms))
+        count = write_batches(blocks, out / "batches", batch_size)
+    else:
+        raise typer.BadParameter("kind must be questions or judge")
+    typer.echo(f"wrote {count} batches to {out / 'batches'}")
+
+
+@app.command()
+def report() -> None:
+    """Print the results table from the answers, the judge's grades and the API check."""
+    from torchlight.eval.batches import load_grades
+    from torchlight.eval.report import results_table
+
+    data_dir = Settings().data_dir
+    judge_dir = data_dir / "eval" / "judge"
+    arms_path = judge_dir / "arms.json"
+    arms = (
+        {int(k): v for k, v in json.loads(arms_path.read_text()).items()}
+        if arms_path.exists()
+        else {}
+    )
+    grades, invalid = load_grades(judge_dir / "results", arms)
+    table = results_table(_eval_examples(), _all_answers(data_dir), grades)
+    (data_dir / "eval" / "results.md").write_text(table + "\n")
+    typer.echo(table)
+    typer.echo(f"\n{len(grades)} grades, {invalid} items missing or malformed")
