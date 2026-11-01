@@ -77,7 +77,7 @@ def loss_table(
 
 
 class KaggleRun(BaseModel):
-    """What a Kaggle training run (kaggle/train_qwen3.py) reports in its log."""
+    """What a Kaggle training run (kaggle/train/train_qwen3.ipynb) reports in its log."""
 
     train_rows: int
     validation_rows: int

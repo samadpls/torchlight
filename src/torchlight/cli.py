@@ -405,7 +405,8 @@ def card(
     since: Since = None,
 ) -> None:
     """Write the model cards and the loss chart for the merged model, adapter and GGUF repos.
-    A run trained on Kaggle (kaggle/train_qwen3.py) is recognized by its log_history.json."""
+    A run trained on Kaggle (kaggle/train/train_qwen3.ipynb) is recognized by its
+    log_history.json."""
     from torchlight.publish.card import (
         QWEN3_LIMITATIONS,
         kaggle_run_text,

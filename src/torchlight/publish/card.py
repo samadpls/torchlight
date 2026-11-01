@@ -335,7 +335,7 @@ QWEN3_LIMITATIONS = [
 
 
 def kaggle_run_text(params: LoRARun, facts: dict, limitations: list[str]) -> dict:
-    """Card text for a run trained on a Kaggle GPU with Unsloth (kaggle/train_qwen3.py)."""
+    """Card text for a run trained on a Kaggle GPU with Unsloth (kaggle/train/train_qwen3.ipynb)."""
     rows = [
         (
             "Method",
