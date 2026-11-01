@@ -105,7 +105,7 @@ The two models use different tokenizers, so their losses can't be compared with 
 </p>
 </details>
 
-More: [training on Kaggle](kaggle/) and [training on a Mac](src/torchlight/train/).
+More: [training on Kaggle](kaggle/) and [training on a Mac](src/torchlight/train/). The [training notebook](https://www.kaggle.com/code/samadpls/torchlight-qwen3-8b-train) is also public on Kaggle.
 
 ## 3. Evaluation
 

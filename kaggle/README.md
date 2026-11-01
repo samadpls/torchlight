@@ -1,11 +1,11 @@
 # Training and answering on Kaggle
 
-The second model, [`torchlight-qwen3-8b`](https://huggingface.co/samadpls/torchlight-qwen3-8b), was trained and tested on Kaggle's free GPUs instead of a Mac. Each folder here is one Kaggle job: a Python script and the `kernel-metadata.json` that tells Kaggle how to run it.
+The second model, [`torchlight-qwen3-8b`](https://huggingface.co/samadpls/torchlight-qwen3-8b), was trained and tested on Kaggle's free GPUs instead of a Mac. Each folder here is one Kaggle notebook and the `kernel-metadata.json` that tells Kaggle how to run it. Both notebooks are also public on Kaggle.
 
-| Folder | What it does | Time on one T4 GPU |
-|---|---|---|
-| `train/` | Fine-tunes Qwen3-8B with LoRA (Unsloth, 4-bit base), then uploads the adapter, the full model and GGUF files to Hugging Face | about 5 hours |
-| `answer/` | Answers the test questions with Qwen3-8B or the fine-tuned model, for the evaluation | 10 to 60 minutes |
+| Folder | What it does | Time on one T4 GPU | On Kaggle |
+|---|---|---|---|
+| `train/` | Fine-tunes Qwen3-8B with LoRA (Unsloth, 4-bit base), then uploads the adapter, the full model and GGUF files to Hugging Face | about 5 hours | [training notebook](https://www.kaggle.com/code/samadpls/torchlight-qwen3-8b-train) |
+| `answer/` | Answers the test questions with Qwen3-8B or the fine-tuned model, for the evaluation | 10 to 60 minutes | [answers notebook](https://www.kaggle.com/code/samadpls/torchlight-qwen3-8b-answers) |
 
 ## One-time setup
 
@@ -24,7 +24,7 @@ uv sync --extra kaggle
 #    without running it, then open it and click Save Version → Save & Run All.
 uv run torchlight kaggle kernels push -p kaggle/train --no-run
 
-# 2. Answer the test questions. Set ARM in answer_qwen3.py: "Q" for Qwen3-8B, "QF" for the
+# 2. Answer the test questions. Set ARM in answer_qwen3.ipynb: "Q" for Qwen3-8B, "QF" for the
 #    fine-tuned model.
 uv run torchlight kaggle kernels push -p kaggle/answer --accelerator NvidiaTeslaT4
 uv run torchlight kaggle kernels status samadpls/torchlight-qwen3-8b-answers
@@ -38,7 +38,7 @@ uv run torchlight batches judge --eval-set qwen --since 2025-04-01
 uv run torchlight report --eval-set qwen --since 2025-04-01
 ```
 
-Set `SMOKE = True` in `train_qwen3.py` for a 10-minute test run of every step, without the upload.
+Set `SMOKE = True` in `train_qwen3.ipynb` for a 10-minute test run of every step, without the upload.
 
 ## Notes
 
