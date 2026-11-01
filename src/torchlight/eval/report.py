@@ -9,12 +9,14 @@ from torchlight.schemas import EvalExample
 ARM_NAMES = {
     "A": "Phi-4-mini (base model)",
     "B": "Phi-4-mini + forum search",
-    "D": "torchlight (fine-tuned)",
-    "E": "torchlight + forum search",
+    "D": "torchlight-phi4-mini (fine-tuned)",
+    "E": "torchlight-phi4-mini + forum search",
+    "Q": "Qwen3-8B (base model)",
+    "QF": "torchlight-qwen3-8b (fine-tuned)",
 }
 # Arm C, a larger model with the same search tool, is graded alongside as a reference for the
-# judge but left out of the table, which compares models of the same size.
-REPORTED_ARMS = ["A", "B", "D", "E"]
+# judge but left out of the table, which compares the models we fine-tune with their bases.
+REPORTED_ARMS = ["A", "B", "D", "E", "Q", "QF"]
 
 
 def _share(values: list[bool]) -> str:
@@ -35,14 +37,19 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
     for grade in grades:
         grades_by_arm[grade.arm].append(grade)
 
-    rows = [
-        "| Model | Average grade (out of 5) | Graded 4 or 5 | Wrong answers (graded 1) | "
-        "Code with only real torch APIs | "
-        "Asked for details, when they were missing | Asked for details, when not needed | "
-        "Searches per question |",
-        "|---|---|---|---|---|---|---|---|",
-    ]
-    for arm in [a for a in REPORTED_ARMS if a in by_arm]:
+    reported = [a for a in REPORTED_ARMS if a in by_arm]
+    searched = any(a.searches for arm in reported for a in by_arm[arm])
+    columns = [
+        "Model",
+        "Average grade (out of 5)",
+        "Graded 4 or 5",
+        "Wrong answers (graded 1)",
+        "Code with only real torch APIs",
+        "Asked for details, when they were missing",
+        "Asked for details, when not needed",
+    ] + (["Searches per question"] if searched else [])
+    rows = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
+    for arm in reported:
         arm_answers = by_arm[arm]
         arm_grades = grades_by_arm[arm]
         with_code = [a for a in arm_answers if torch_names(a.answer)]
@@ -57,8 +64,8 @@ def results_table(examples: list[EvalExample], answers: list[Answer], grades: li
                     _count([not invalid_names(a.answer) for a in with_code]),
                     _count([g.asks for g in arm_grades if needs_details[g.thread_id]]),
                     _share([g.asks for g in arm_grades if not needs_details[g.thread_id]]),
-                    f"{mean(len(a.searches) for a in arm_answers):.1f}",
                 ]
+                + ([f"{mean(len(a.searches) for a in arm_answers):.1f}"] if searched else [])
             )
             + " |"
         )

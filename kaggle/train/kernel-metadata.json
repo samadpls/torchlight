@@ -1,0 +1,13 @@
+{
+  "id": "samadpls/torchlight-qwen3-8b-train",
+  "title": "torchlight qwen3-8b train",
+  "code_file": "train_qwen3.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}

@@ -11,3 +11,6 @@ class Settings(BaseSettings):
     hf_token: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("HF_TOKEN", "HF_API")
     )
+    kaggle_token: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("KAGGLE_API_TOKEN", "KAGGLE_API")
+    )

@@ -30,7 +30,7 @@ Everything is saved in `data/train/phi4-mini/`:
 Training took 6.3 hours. Validation loss went from 3.280 (the base model) to 1.495.
 
 <p align="center">
-  <img alt="Training and validation loss" src="../../../assets/training-loss.png" width="100%">
+  <img alt="Training and validation loss" src="../../../assets/training-loss-phi4-mini.png" width="100%">
 </p>
 
 | Epoch | Batch | Training loss | Validation loss |
