@@ -31,6 +31,9 @@ publish = [
     "cmake>=4.4.4",
     "matplotlib>=3.11.2",
 ]
+kaggle = [
+    "kaggle>=2.2.5",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13.0"]

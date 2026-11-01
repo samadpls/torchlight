@@ -35,7 +35,12 @@ def smoothed(values: list[float], weight: float) -> list[float]:
 
 
 def plot_losses(
-    log: TrainingLog, path: Path, title: str, subtitle: str, smoothing: float = 0.9
+    log: TrainingLog,
+    path: Path,
+    title: str,
+    subtitle: str,
+    smoothing: float = 0.9,
+    x_label: str = "Batch (2 chats each)",
 ) -> None:
     """Training loss (each report faint, smoothed on top) and validation loss."""
     plt.rcParams["font.family"] = _font()
@@ -97,8 +102,8 @@ def plot_losses(
 
     right = max(batches[-1], val_batches[-1])
     ax.set_xlim(-0.015 * right, right * 1.04)
-    ax.set_ylim(min(min(losses), min(val_losses)) - 0.2, max(losses) + 0.2)
-    ax.set_xlabel("Batch (2 chats each)", color=MUTED, fontsize=10)
+    ax.set_ylim(min(min(losses), min(val_losses)) - 0.2, max(max(losses), max(val_losses)) + 0.2)
+    ax.set_xlabel(x_label, color=MUTED, fontsize=10)
     ax.set_ylabel("Loss", color=MUTED, fontsize=10)
     ax.xaxis.set_major_formatter(lambda x, _: f"{x:,.0f}")
     ax.grid(axis="y", color=GRID, lw=1)

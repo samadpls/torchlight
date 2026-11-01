@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -49,6 +49,7 @@ def settings() -> None:
     s = Settings()
     typer.echo(f"data_dir: {s.data_dir.resolve()}")
     typer.echo(f"HF token: {'set' if _is_set(s.hf_token) else 'missing'}")
+    typer.echo(f"Kaggle token: {'set' if _is_set(s.kaggle_token) else 'missing'}")
 
 
 @app.command()
@@ -197,11 +198,29 @@ def fuse(
 LOCAL_ARMS = {"A": (False, False), "B": (False, True), "D": (True, False), "E": (True, True)}
 
 
-def _eval_examples() -> list:
+def _eval_examples(since: datetime | None = None) -> list:
     from torchlight.schemas import EvalExample
 
     path = Settings().data_dir / "processed" / "eval" / "test.jsonl"
-    return [EvalExample.model_validate_json(line) for line in path.read_text().splitlines()]
+    examples = [EvalExample.model_validate_json(line) for line in path.read_text().splitlines()]
+    if since:
+        examples = [e for e in examples if e.created_at >= since.replace(tzinfo=UTC)]
+    return examples
+
+
+def _eval_dir(eval_set: str | None) -> Path:
+    """data/eval, or a subfolder for a comparison on its own set of questions."""
+    root = Settings().data_dir / "eval"
+    return root / eval_set if eval_set else root
+
+
+EvalSet = Annotated[
+    str | None, typer.Option(help="Subfolder of data/eval for a separate comparison.")
+]
+Since = Annotated[
+    datetime | None,
+    typer.Option(formats=["%Y-%m-%d"], help="Use only questions asked on or after this date."),
+]
 
 
 @app.command()
@@ -262,37 +281,39 @@ def answer(
     )
 
 
-def _all_answers(data_dir: Path) -> list:
+def _all_answers(eval_dir: Path) -> list:
     from torchlight.eval.batches import load_answers
     from torchlight.eval.generate import Answer
 
     answers = []
-    for path in sorted((data_dir / "eval" / "answers").glob("*.jsonl")):
+    for path in sorted((eval_dir / "answers").glob("*.jsonl")):
         answers += [Answer.model_validate_json(line) for line in path.read_text().splitlines()]
-    return answers + load_answers(data_dir / "eval" / "agent" / "results", "C")
+    return answers + load_answers(eval_dir / "agent" / "results", "C")
 
 
 @app.command()
 def batches(
     kind: Annotated[str, typer.Argument(help="questions (for arm C) or judge.")],
     batch_size: int = 20,
+    eval_set: EvalSet = None,
+    since: Since = None,
 ) -> None:
     """Write batch files for arm C or the judge, run as LLM agents."""
     from torchlight.build.examples import SYSTEM_PROMPT
     from torchlight.eval.batches import judge_block, question_block, write_batches
 
-    data_dir = Settings().data_dir
-    examples = _eval_examples()
+    eval_dir = _eval_dir(eval_set)
+    examples = _eval_examples(since)
     if kind == "questions":
-        out = data_dir / "eval" / "agent"
+        out = eval_dir / "agent"
         prompt = Path("prompts/answer.md").read_text().replace("{system_prompt}", SYSTEM_PROMPT)
         out.mkdir(parents=True, exist_ok=True)
         (out / "instructions.md").write_text(prompt)
         count = write_batches([question_block(e) for e in examples], out / "batches", batch_size)
     elif kind == "judge":
-        out = data_dir / "eval" / "judge"
+        out = eval_dir / "judge"
         by_item: dict[int, dict] = {}
-        for a in _all_answers(data_dir):
+        for a in _all_answers(eval_dir):
             by_item.setdefault(a.thread_id, {})[a.arm] = a
         blocks = [judge_block(e, by_item[e.thread_id]) for e in examples if e.thread_id in by_item]
         out.mkdir(parents=True, exist_ok=True)
@@ -305,13 +326,13 @@ def batches(
 
 
 @app.command()
-def report() -> None:
+def report(eval_set: EvalSet = None, since: Since = None) -> None:
     """Print the results table from the answers, the judge's grades and the API check."""
     from torchlight.eval.batches import load_grades
     from torchlight.eval.report import results_table
 
-    data_dir = Settings().data_dir
-    judge_dir = data_dir / "eval" / "judge"
+    eval_dir = _eval_dir(eval_set)
+    judge_dir = eval_dir / "judge"
     arms_path = judge_dir / "arms.json"
     arms = (
         {int(k): v for k, v in json.loads(arms_path.read_text()).items()}
@@ -319,8 +340,11 @@ def report() -> None:
         else {}
     )
     grades, invalid = load_grades(judge_dir / "results", arms)
-    table = results_table(_eval_examples(), _all_answers(data_dir), grades)
-    (data_dir / "eval" / "results.md").write_text(table + "\n")
+    examples = _eval_examples(since)
+    ids = {e.thread_id for e in examples}
+    answers = [a for a in _all_answers(eval_dir) if a.thread_id in ids]
+    table = results_table(examples, answers, grades)
+    (eval_dir / "results.md").write_text(table + "\n")
     typer.echo(table)
     typer.echo(f"\n{len(grades)} grades, {invalid} items missing or malformed")
 
@@ -377,83 +401,140 @@ def card(
     notes: Annotated[
         Path | None, typer.Option(help="Markdown to add under the results table.")
     ] = None,
+    eval_set: EvalSet = None,
+    since: Since = None,
 ) -> None:
-    """Write the model cards and the loss chart for the merged model, adapter and GGUF repos."""
-    from importlib.metadata import version
-
-    from torchlight.publish.card import model_card
+    """Write the model cards and the loss chart for the merged model, adapter and GGUF repos.
+    A run trained on Kaggle (kaggle/train_qwen3.py) is recognized by its log_history.json."""
+    from torchlight.publish.card import (
+        QWEN3_LIMITATIONS,
+        kaggle_run_text,
+        mlx_run_text,
+        model_card,
+        repo_names,
+    )
     from torchlight.publish.charts import plot_losses
-    from torchlight.train.log import loss_table, read_log
+    from torchlight.train.log import loss_table, read_kaggle_run, read_log, read_trainer_log
 
     data_dir = Settings().data_dir
     run_dir = data_dir / "train" / run
     params = LoRARun.model_validate_json((run_dir / "run.json").read_text())
-    config = yaml.safe_load((run_dir / "lora.yaml").read_text())
-    log = read_log(run_dir / "train.log")
-    batches = config["iters"]
-    started = (run_dir / "lora.yaml").stat().st_mtime
-    hours = ((run_dir / "adapters" / "adapters.safetensors").stat().st_mtime - started) / 3600
-    train_rows = _lines(run_dir / "data" / "train.jsonl")
-    examples = _eval_examples()
+    examples = _eval_examples(since)
     clarify = sum(e.needs_clarification for e in examples)
-    facts = {
-        "train_rows": train_rows,
-        "dropped": _lines(data_dir / "processed" / "sft" / "train.jsonl") - train_rows,
-        "validation_rows": _lines(run_dir / "data" / "valid.jsonl"),
+    facts: dict = {
         "valid_since": f"{valid_since:%Y-%m-%d}",
         "eval_since": json.loads((data_dir / "raw" / "topic_ids.json").read_text())["eval_since"],
+        "eval_count_since": f"{since or min(e.created_at for e in examples):%Y-%m-%d}",
         "eval_until": f"{max(e.created_at for e in examples):%Y-%m-%d}",
         "eval_count": len(examples),
         "clarify_count": clarify,
         "answerable_count": len(examples) - clarify,
         "search_docs": _lines(data_dir / "retrieval" / "docs.jsonl"),
-        "batches": batches,
-        "updates": batches // params.grad_accumulation,
-        "warmup_updates": config["lr_schedule"]["warmup"],
-        "hours": hours,
-        "seconds_per_batch": hours * 3600 / batches,
-        "trainable": f"{log.trainable_millions:.1f}M",
-        "trainable_share": f"{log.trainable_percent:.2f}%",
-        "optimizer": {"adamw": "AdamW", "adam": "Adam", "sgd": "SGD"}.get(
-            config["optimizer"], config["optimizer"]
-        ),
-        "mlx_lm": version("mlx-lm"),
-        "mlx": version("mlx"),
     }
-    chart = Path("assets/training-loss.png")
+    sft_rows = _lines(data_dir / "processed" / "sft" / "train.jsonl")
+    history = run_dir / "log_history.json"
+    if history.exists():
+        kaggle = read_kaggle_run(next(run_dir.glob("*.log")), history)
+        log = read_trainer_log(history)
+        facts |= {
+            "train_rows": kaggle.train_rows,
+            "dropped": sft_rows - kaggle.train_rows,
+            "validation_rows": kaggle.validation_rows,
+            "steps": kaggle.steps,
+            "gpu": kaggle.gpu,
+            "unsloth": kaggle.unsloth,
+            "transformers": kaggle.transformers,
+            "hours": kaggle.hours,
+            "trainable": f"{kaggle.trainable_millions:.1f}M",
+            "trainable_share": f"{kaggle.trainable_percent:.2f}%",
+            "size": f"{kaggle.total_billions:.1f}B",
+        }
+        facts |= kaggle_run_text(params, facts, QWEN3_LIMITATIONS)
+        table = loss_table(log, kaggle.steps, every=200, unit="Step")
+        where, x_label = f"on one {kaggle.gpu} GPU on Kaggle", "Step (8 chats each)"
+    else:
+        from importlib.metadata import version
+
+        config = yaml.safe_load((run_dir / "lora.yaml").read_text())
+        log = read_log(run_dir / "train.log")
+        batches = config["iters"]
+        started = (run_dir / "lora.yaml").stat().st_mtime
+        hours = ((run_dir / "adapters" / "adapters.safetensors").stat().st_mtime - started) / 3600
+        train_rows = _lines(run_dir / "data" / "train.jsonl")
+        facts |= {
+            "train_rows": train_rows,
+            "dropped": sft_rows - train_rows,
+            "validation_rows": _lines(run_dir / "data" / "valid.jsonl"),
+            "batches": batches,
+            "warmup_updates": config["lr_schedule"]["warmup"],
+            "hours": hours,
+            "trainable": f"{log.trainable_millions:.1f}M",
+            "trainable_share": f"{log.trainable_percent:.2f}%",
+            # trainable millions / (percent / 100) / 1000 gives the total in billions.
+            "size": f"{log.trainable_millions / log.trainable_percent / 10:.1f}B",
+            "optimizer": {"adamw": "AdamW", "adam": "Adam", "sgd": "SGD"}.get(
+                config["optimizer"], config["optimizer"]
+            ),
+            "mlx_lm": version("mlx-lm"),
+            "mlx": version("mlx"),
+        }
+        facts |= mlx_run_text(params, facts)
+        table = loss_table(log, batches)
+        where, x_label = "on a MacBook Pro (M3 Pro)", "Batch (2 chats each)"
+    chart = Path(f"assets/training-loss-{run}.png")
     plot_losses(
         log,
         chart,
         f"LoRA fine-tune of {params.model.split('/')[-1]}",
-        f"One epoch over {train_rows:,} forum chats on a MacBook Pro (M3 Pro)",
+        f"One epoch over {facts['train_rows']:,} forum chats {where}",
+        x_label=x_label,
     )
-    results_path = data_dir / "eval" / "results.md"
+    results_path = _eval_dir(eval_set) / "results.md"
     results = (
         results_path.read_text().strip()
         if results_path.exists()
         else "The evaluation is still running. Results will be added here when it finishes."
     )
+    hub_gguf = _hub_gguf_sizes(repo_names(repo)["gguf"]) if history.exists() else {}
     for kind, folder in _publish_dirs(run_dir).items():
-        if not folder.exists():
-            typer.echo(f"skipping {kind}: {folder} does not exist")
-            continue
-        gguf = {p.name: p.stat().st_size for p in sorted(folder.glob("*.gguf"))}
+        folder.mkdir(parents=True, exist_ok=True)
+        gguf = {p.name: p.stat().st_size for p in sorted(folder.glob("*.gguf"))} or hub_gguf
         (folder / "README.md").write_text(
             model_card(
                 kind,
                 repo,
                 params,
                 facts,
-                loss_table(log, batches),
+                table,
                 results,
                 notes.read_text().strip() if notes else "",
                 gguf,
             )
         )
         (folder / "assets").mkdir(exist_ok=True)
-        for asset in (Path("assets/hero.png"), chart):
-            shutil.copy(asset, folder / "assets" / asset.name)
+        shutil.copy("assets/hero.png", folder / "assets" / "hero.png")
+        shutil.copy(chart, folder / "assets" / "training-loss.png")
         typer.echo(f"wrote {folder / 'README.md'}")
+
+
+def _hub_gguf_sizes(repo: str) -> dict[str, int]:
+    """GGUF file sizes in a Hub repo, for runs whose files were uploaded from elsewhere."""
+    from huggingface_hub import HfApi
+
+    info = HfApi().repo_info(repo, files_metadata=True)
+    return {s.rfilename: s.size for s in info.siblings if s.rfilename.endswith(".gguf")}
+
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+def kaggle(ctx: typer.Context) -> None:
+    """Run the kaggle CLI with the token from .env, for example
+    `torchlight kaggle kernels push -p kaggle/answer --accelerator NvidiaTeslaT4`."""
+    token = Settings().kaggle_token
+    if not _is_set(token):
+        raise typer.BadParameter("set KAGGLE_API_TOKEN (or KAGGLE_API) in .env")
+    env = dict(os.environ, KAGGLE_API_TOKEN=token.get_secret_value())
+    command = [str(Path(sys.executable).with_name("kaggle")), *ctx.args]
+    raise typer.Exit(subprocess.run(command, env=env).returncode)
 
 
 @app.command()
